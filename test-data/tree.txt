@@ -1,0 +1,63 @@
+{
+"scenario": "Credit Card Fraud/Lost Card",
+"nodes": [
+{
+"id": "N1_Greeting",
+"name": "Standard Greeting",
+"description": "Agent must state company name and their own name.",
+"is_mandatory": true,
+"compliance_critical": false
+},
+{
+"id": "N2_Triage",
+"name": "Issue Triage",
+"description": "Identify the customer's problem.",
+"is_mandatory": true,
+"compliance_critical": false
+},
+{
+"id": "N3_IdentityVerification",
+"name": "Identity Verification",
+"description": "Must ask for at least two points of verification (e.g., DOB, Zip Code, last 4 of SSN).",
+"is_mandatory": true,
+"compliance_critical": true
+},
+{
+"id": "N4_Empathy",
+"name": "Empathy Statement",
+"description": "Acknowledge the stress of the situation (e.g., 'I am so sorry to hear that happened').",
+"is_mandatory": false,
+"compliance_critical": false
+},
+{
+"id": "N5_Resolution",
+"name": "Card Block & Replace",
+"description": "Confirm the compromised card is blocked and a new one is ordered.",
+"is_mandatory": true,
+"compliance_critical": false
+},
+{
+"id": "N6_LegalDisclosure",
+"name": "Zero Liability Disclosure",
+"description": "Must state that the customer is not liable for unauthorized charges under the Zero Liability policy.",
+"is_mandatory": true,
+"compliance_critical": true
+},
+{
+"id": "N7_Closing",
+"name": "Standard Closing",
+"description": "Ask if there is anything else they need help with before disconnecting.",
+"is_mandatory": true,
+"compliance_critical": false
+}
+],
+"valid_edges": [
+{"from": "N1_Greeting", "to": "N2_Triage"},
+{"from": "N2_Triage", "to": "N3_IdentityVerification"},
+{"from": "N3_IdentityVerification", "to": "N4_Empathy"},
+{"from": "N3_IdentityVerification", "to": "N5_Resolution"},
+{"from": "N4_Empathy", "to": "N5_Resolution"},
+{"from": "N5_Resolution", "to": "N6_LegalDisclosure"},
+{"from": "N6_LegalDisclosure", "to": "N7_Closing"}
+]
+}
