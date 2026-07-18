@@ -1,0 +1,31 @@
+{
+  "root_id": "n1",
+  "nodes": {
+    "n1": {
+      "id": "n1",
+      "type": "question",
+      "label": "Start",
+      "prompt": "Welcome to customer service",
+      "options": [
+        {"label": "Yes", "next_id": "n2"},
+        {"label": "No", "next_id": "n99"}
+      ]
+    },
+    "n2": {
+      "id": "n2",
+      "type": "action",
+      "label": "Process",
+      "prompt": "Processing your request",
+      "options": []
+    },
+    "n3": {
+      "id": "n3",
+      "type": "question",
+      "label": "TBD",
+      "prompt": "x",
+      "options": [
+        {"label": "Option 1", "next_id": "n2"}
+      ]
+    }
+  }
+}

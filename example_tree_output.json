@@ -1,0 +1,201 @@
+{
+  "root_id": "n1",
+  "nodes": {
+    "n1": {
+      "id": "n1",
+      "type": "action",
+      "label": "Answer Call",
+      "prompt": "Answer within 3 rings. Say: 'Thank you for calling [Company], this is [Name]. How may I assist you today?'",
+      "options": [{"label": "Continue", "next_id": "n2"}]
+    },
+    "n2": {
+      "id": "n2",
+      "type": "question",
+      "label": "Account-specific inquiry?",
+      "prompt": "Ask: 'Is this regarding a specific account?'",
+      "options": [
+        {"label": "Yes", "next_id": "n3"},
+        {"label": "No", "next_id": "n10"}
+      ]
+    },
+    "n3": {
+      "id": "n3",
+      "type": "action",
+      "label": "Verify Identity",
+      "prompt": "Say: 'For security purposes, could you please confirm your account number and date of birth?' Verify against CRM.",
+      "options": [{"label": "Continue", "next_id": "n4"}]
+    },
+    "n4": {
+      "id": "n4",
+      "type": "question",
+      "label": "Verification successful?",
+      "prompt": "Check CRM verification result",
+      "options": [
+        {"label": "Yes", "next_id": "n5"},
+        {"label": "No", "next_id": "n14"}
+      ]
+    },
+    "n5": {
+      "id": "n5",
+      "type": "action",
+      "label": "Identify Issue",
+      "prompt": "Listen actively without interrupting. Ask clarifying questions. Summarize issue back to customer.",
+      "options": [{"label": "Continue", "next_id": "n6"}]
+    },
+    "n6": {
+      "id": "n6",
+      "type": "question",
+      "label": "Issue Category",
+      "prompt": "Categorize the issue",
+      "options": [
+        {"label": "Technical problem", "next_id": "n7"},
+        {"label": "Billing question", "next_id": "n8"},
+        {"label": "Account access", "next_id": "n9"},
+        {"label": "Formal complaint", "next_id": "n15"},
+        {"label": "Feature request", "next_id": "n16"},
+        {"label": "Legal/security incident", "next_id": "n17"}
+      ]
+    },
+    "n7": {
+      "id": "n7",
+      "type": "question",
+      "label": "Technical Issue Resolvable at Tier 1?",
+      "prompt": "Attempt troubleshooting using knowledge base",
+      "options": [
+        {"label": "Yes, resolved", "next_id": "n11"},
+        {"label": "No, needs escalation", "next_id": "n18"}
+      ]
+    },
+    "n8": {
+      "id": "n8",
+      "type": "question",
+      "label": "Billing Issue Within Authority?",
+      "prompt": "Check if refund/credit is within agent authority limit",
+      "options": [
+        {"label": "Yes", "next_id": "n11"},
+        {"label": "No, needs escalation", "next_id": "n19"}
+      ]
+    },
+    "n9": {
+      "id": "n9",
+      "type": "question",
+      "label": "Account Access Verified?",
+      "prompt": "Check if identity was already verified",
+      "options": [
+        {"label": "Yes, reset password", "next_id": "n11"},
+        {"label": "No, cannot reset", "next_id": "n20"}
+      ]
+    },
+    "n10": {
+      "id": "n10",
+      "type": "action",
+      "label": "Handle General Inquiry",
+      "prompt": "Provide information from knowledge base or scripts.",
+      "options": [{"label": "Continue", "next_id": "n11"}]
+    },
+    "n11": {
+      "id": "n11",
+      "type": "action",
+      "label": "Deliver Empathy",
+      "prompt": "Say: 'I understand how frustrating that must be. Let me look into this for you right away.'",
+      "options": [{"label": "Continue", "next_id": "n12"}]
+    },
+    "n12": {
+      "id": "n12",
+      "type": "action",
+      "label": "Resolve Issue",
+      "prompt": "Follow approved resolution steps. Search knowledge base and CRM for documented solutions.",
+      "options": [{"label": "Continue", "next_id": "n13"}]
+    },
+    "n13": {
+      "id": "n13",
+      "type": "question",
+      "label": "Issue Resolved?",
+      "prompt": "Ask: 'Has your issue been fully resolved?'",
+      "options": [
+        {"label": "Yes", "next_id": "n21"},
+        {"label": "No", "next_id": "n18"}
+      ]
+    },
+    "n14": {
+      "id": "n14",
+      "type": "end",
+      "label": "Verification Failed",
+      "prompt": "Say: 'I apologize, but I cannot proceed without proper verification. Please contact us back with the correct information.'",
+      "options": []
+    },
+    "n15": {
+      "id": "n15",
+      "type": "action",
+      "label": "Apply De-escalation Framework",
+      "prompt": "Follow Acknowledge -> Empathize -> Take ownership -> Resolve. Use LEARN method for objections.",
+      "options": [{"label": "Continue", "next_id": "n13"}]
+    },
+    "n16": {
+      "id": "n16",
+      "type": "end",
+      "label": "Feature Request Logged",
+      "prompt": "Say: 'Thank you for your suggestion. I've logged your feature request. Our product team will review it.' Do not promise delivery.",
+      "options": []
+    },
+    "n17": {
+      "id": "n17",
+      "type": "action",
+      "label": "Escalate Legal/Security",
+      "prompt": "Immediately escalate to management. Do not attempt resolution.",
+      "options": [{"label": "Continue", "next_id": "n22"}]
+    },
+    "n18": {
+      "id": "n18",
+      "type": "action",
+      "label": "Warm Transfer to Tier 2",
+      "prompt": "Say: 'Thank you for your patience. I'm transferring you to our technical support team now. I've briefed them so you won't need to repeat everything.' Brief receiving agent with context.",
+      "options": [{"label": "Continue", "next_id": "n23"}]
+    },
+    "n19": {
+      "id": "n19",
+      "type": "action",
+      "label": "Warm Transfer to Billing",
+      "prompt": "Say: 'Thank you for your patience. I'm transferring you to our billing team now. I've briefed them with your account details.'",
+      "options": [{"label": "Continue", "next_id": "n23"}]
+    },
+    "n20": {
+      "id": "n20",
+      "type": "action",
+      "label": "Warm Transfer to IT Support",
+      "prompt": "Say: 'Thank you for your patience. I'm transferring you to our account access team now.'",
+      "options": [{"label": "Continue", "next_id": "n23"}]
+    },
+    "n21": {
+      "id": "n21",
+      "type": "question",
+      "label": "Anything Else?",
+      "prompt": "Ask: 'Is there anything else I can help you with today?'",
+      "options": [
+        {"label": "Yes", "next_id": "n5"},
+        {"label": "No", "next_id": "n24"}
+      ]
+    },
+    "n22": {
+      "id": "n22",
+      "type": "action",
+      "label": "Warm Transfer to Management",
+      "prompt": "Say: 'I'm connecting you with a manager now. They will be able to assist you further.'",
+      "options": [{"label": "Continue", "next_id": "n23"}]
+    },
+    "n23": {
+      "id": "n23",
+      "type": "end",
+      "label": "Call Transferred",
+      "prompt": "Log escalation details in CRM for continuity.",
+      "options": []
+    },
+    "n24": {
+      "id": "n24",
+      "type": "end",
+      "label": "Call Closed",
+      "prompt": "Say: 'Thank you for calling [Company]. Have a great day.' Complete after-call work (ACW): notes, CRM update, disposition code.",
+      "options": []
+    }
+  }
+}

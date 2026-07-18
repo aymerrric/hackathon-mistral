@@ -1,0 +1,33 @@
+Call Center Standard Operating Procedure
+
+Section 1: Call Initiation
+- Greet the caller: "Thank you for calling. How can I help you today?"
+- Determine call purpose
+
+Section 2: Emergency Protocol
+- Ask: "Is this an emergency situation?"
+- If YES:
+  * Immediately dispatch emergency services
+  * Instruct caller to stay on the line if safe
+  * Do not ask verification questions
+- If NO:
+  * Proceed to identity verification
+
+Section 3: Identity Verification
+- Ask: "Can you please verify your full name and account number?"
+- If caller provides correct information:
+  * Mark as verified
+  * Proceed with request
+- If caller cannot verify:
+  * Politely explain that verification is required
+  * End the call
+
+Section 4: Request Processing
+- Listen to customer request
+- Categorize the issue
+- Provide appropriate solution or escalate to specialist
+
+Section 5: Call Closure
+- Confirm resolution with caller
+- Thank caller for their time
+- End call professionally

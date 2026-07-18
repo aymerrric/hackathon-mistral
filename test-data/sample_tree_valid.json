@@ -1,0 +1,53 @@
+{
+  "root_id": "n1",
+  "nodes": {
+    "n1": {
+      "id": "n1",
+      "type": "question",
+      "label": "Emergency?",
+      "prompt": "Is this an emergency?",
+      "options": [
+        {"label": "Yes", "next_id": "n2"},
+        {"label": "No", "next_id": "n3"}
+      ]
+    },
+    "n2": {
+      "id": "n2",
+      "type": "action",
+      "label": "Dispatch",
+      "prompt": "Dispatching emergency services immediately.",
+      "options": [{"label": "Continue", "next_id": "n4"}]
+    },
+    "n3": {
+      "id": "n3",
+      "type": "question",
+      "label": "Verify Identity",
+      "prompt": "Can you please verify your full name and account number?",
+      "options": [
+        {"label": "Verified", "next_id": "n5"},
+        {"label": "Not Verified", "next_id": "n6"}
+      ]
+    },
+    "n4": {
+      "id": "n4",
+      "type": "end",
+      "label": "Emergency Handled",
+      "prompt": "Emergency services have been dispatched. Please stay on the line if safe to do so.",
+      "options": []
+    },
+    "n5": {
+      "id": "n5",
+      "type": "end",
+      "label": "Verified",
+      "prompt": "Thank you. Your identity has been verified. How can I assist you today?",
+      "options": []
+    },
+    "n6": {
+      "id": "n6",
+      "type": "end",
+      "label": "Not Verified",
+      "prompt": "I'm sorry, I cannot proceed without identity verification. Please call back when you can provide the required information.",
+      "options": []
+    }
+  }
+}

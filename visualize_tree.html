@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallTree - Decision Tree Visualizer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .tree-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            overflow-y: auto;
+            min-height: 600px;
+        }
+        .node {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .node:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        .node.question {
+            border-color: #4285f4;
+            background: #e8f0fe;
+        }
+        .node.action {
+            border-color: #34a853;
+            background: #e6f4ea;
+        }
+        .node.end {
+            border-color: #ea4335;
+            background: #fce8e6;
+        }
+        .node .label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        .node .type {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .node.question .type { background: #4285f4; color: white; }
+        .node.action .type { background: #34a853; color: white; }
+        .node.end .type { background: #ea4335; color: white; }
+        .node .prompt {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .node .options {
+            margin-top: 10px;
+        }
+        .node .option {
+            background: #f9f9f9;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .node .option:hover {
+            background: #f0f0f0;
+            border-left-color: #4285f4;
+        }
+        .edge {
+            stroke: #999;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+        .edge.highlight {
+            stroke: #4285f4;
+            stroke-width: 3;
+        }
+        #tree-svg {
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .controls button.primary {
+            background: #4285f4;
+            color: white;
+        }
+        .controls button.primary:hover {
+            background: #3367d6;
+        }
+        .controls button.secondary {
+            background: #f1f3f4;
+            color: #333;
+        }
+        .controls button.secondary:hover {
+            background: #e8eaed;
+        }
+        .controls input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 250px;
+        }
+        .node-id {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-item .color-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        .legend-item .color-box.question { background: #e8f0fe; border: 2px solid #4285f4; }
+        .legend-item .color-box.action { background: #e6f4ea; border: 2px solid #34a853; }
+        .legend-item .color-box.end { background: #fce8e6; border: 2px solid #ea4335; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CallTree - Decision Tree Visualizer</h1>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="color-box question"></div>
+                <span>Question Node</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box action"></div>
+                <span>Action Node</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box end"></div>
+                <span>End Node</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <input type="file" id="fileInput" accept=".json" />
+            <button class="primary" onclick="loadFromFile()">Load Tree JSON</button>
+            <button class="secondary" onclick="loadExample()">Load Example Tree</button>
+            <button class="secondary" onclick="resetView()">Reset View</button>
+            <button class="secondary" onclick="toggleLayout()">Toggle Layout</button>
+        </div>
+        
+        <div class="tree-container">
+            <svg id="tree-svg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#999" />
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+        
+        <div id="node-details" style="display: none; margin-top: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);"></div>
+    </div>
+
+    <script>
+        let treeData = null;
+        let nodePositions = {};
+        let layoutMode = 'hierarchical'; // or 'force'
+        let selectedNode = null;
+        
+        // Example tree data (from the call center rule set)
+        const exampleTree = {
+            "root_id": "n1",
+            "nodes": {
+                "n1": {"id": "n1", "type": "action", "label": "Answer Call", "prompt": "Answer within 3 rings. Say: 'Thank you for calling [Company], this is [Name]. How may I assist you today?'", "options": [{"label": "Continue", "next_id": "n2"}]},
+                "n2": {"id": "n2", "type": "question", "label": "Account-specific?", "prompt": "Ask: 'Is this regarding a specific account?'", "options": [{"label": "Yes", "next_id": "n3"}, {"label": "No", "next_id": "n10"}]},
+                "n3": {"id": "n3", "type": "action", "label": "Verify Identity", "prompt": "Verify account number and date of birth against CRM.", "options": [{"label": "Continue", "next_id": "n4"}]},
+                "n4": {"id": "n4", "type": "question", "label": "Verification OK?", "prompt": "Check CRM verification result", "options": [{"label": "Yes", "next_id": "n5"}, {"label": "No", "next_id": "n14"}]},
+                "n5": {"id": "n5", "type": "action", "label": "Identify Issue", "prompt": "Listen actively, ask clarifying questions, summarize back.", "options": [{"label": "Continue", "next_id": "n6"}]},
+                "n6": {"id": "n6", "type": "question", "label": "Issue Category", "prompt": "Categorize the issue", "options": [{"label": "Technical", "next_id": "n7"}, {"label": "Billing", "next_id": "n8"}, {"label": "Access", "next_id": "n9"}, {"label": "Complaint", "next_id": "n15"}, {"label": "Feature Request", "next_id": "n16"}, {"label": "Legal/Security", "next_id": "n17"}]},
+                "n7": {"id": "n7", "type": "question", "label": "Tier 1 Solvable?", "prompt": "Attempt troubleshooting", "options": [{"label": "Yes", "next_id": "n11"}, {"label": "No", "next_id": "n18"}]},
+                "n8": {"id": "n8", "type": "question", "label": "Within Authority?", "prompt": "Check refund/credit limits", "options": [{"label": "Yes", "next_id": "n11"}, {"label": "No", "next_id": "n19"}]},
+                "n9": {"id": "n9", "type": "question", "label": "Already Verified?", "prompt": "Check identity verification", "options": [{"label": "Yes", "next_id": "n11"}, {"label": "No", "next_id": "n20"}]},
+                "n10": {"id": "n10", "type": "action", "label": "General Inquiry", "prompt": "Provide information from knowledge base.", "options": [{"label": "Continue", "next_id": "n11"}]},
+                "n11": {"id": "n11", "type": "action", "label": "Deliver Empathy", "prompt": "Say: 'I understand how frustrating that must be.'", "options": [{"label": "Continue", "next_id": "n12"}]},
+                "n12": {"id": "n12", "type": "action", "label": "Resolve", "prompt": "Follow approved resolution steps.", "options": [{"label": "Continue", "next_id": "n13"}]},
+                "n13": {"id": "n13", "type": "question", "label": "Resolved?", "prompt": "Ask: 'Has your issue been fully resolved?'", "options": [{"label": "Yes", "next_id": "n21"}, {"label": "No", "next_id": "n18"}]},
+                "n14": {"id": "n14", "type": "end", "label": "Verification Failed", "prompt": "Cannot proceed without proper verification.", "options": []},
+                "n15": {"id": "n15", "type": "action", "label": "De-escalate", "prompt": "Apply Acknowledge -> Empathize -> Take ownership framework.", "options": [{"label": "Continue", "next_id": "n13"}]},
+                "n16": {"id": "n16", "type": "end", "label": "Feature Logged", "prompt": "Feature request logged. Do not promise delivery.", "options": []},
+                "n17": {"id": "n17", "type": "action", "label": "Escalate Legal", "prompt": "Immediately escalate to management.", "options": [{"label": "Continue", "next_id": "n22"}]},
+                "n18": {"id": "n18", "type": "action", "label": "Transfer to Tier 2", "prompt": "Warm transfer to technical support.", "options": [{"label": "Continue", "next_id": "n23"}]},
+                "n19": {"id": "n19", "type": "action", "label": "Transfer to Billing", "prompt": "Warm transfer to billing team.", "options": [{"label": "Continue", "next_id": "n23"}]},
+                "n20": {"id": "n20", "type": "action", "label": "Transfer to IT", "prompt": "Warm transfer to account access team.", "options": [{"label": "Continue", "next_id": "n23"}]},
+                "n21": {"id": "n21", "type": "question", "label": "Anything Else?", "prompt": "Ask: 'Is there anything else I can help you with?'", "options": [{"label": "Yes", "next_id": "n5"}, {"label": "No", "next_id": "n24"}]},
+                "n22": {"id": "n22", "type": "action", "label": "Transfer to Mgmt", "prompt": "Warm transfer to management.", "options": [{"label": "Continue", "next_id": "n23"}]},
+                "n23": {"id": "n23", "type": "end", "label": "Transferred", "prompt": "Call transferred, log details in CRM.", "options": []},
+                "n24": {"id": "n24", "type": "end", "label": "Call Closed", "prompt": "Say: 'Thank you for calling [Company]. Have a great day.'", "options": []}
+            }
+        };
+        
+        function loadExample() {
+            treeData = exampleTree;
+            renderTree();
+        }
+        
+        function loadFromFile() {
+            const input = document.getElementById('fileInput');
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    treeData = JSON.parse(e.target.result);
+                    renderTree();
+                } catch (err) {
+                    alert('Invalid JSON file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function resetView() {
+            nodePositions = {};
+            renderTree();
+        }
+        
+        function toggleLayout() {
+            layoutMode = layoutMode === 'hierarchical' ? 'force' : 'hierarchical';
+            renderTree();
+        }
+        
+        function renderTree() {
+            if (!treeData) {
+                document.getElementById('tree-svg').innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="#999">Load a tree to visualize</text>';
+                return;
+            }
+            
+            const svg = document.getElementById('tree-svg');
+            svg.innerHTML = '';
+            
+            // Add arrowhead marker
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'arrowhead');
+            marker.setAttribute('markerWidth', '10');
+            marker.setAttribute('markerHeight', '7');
+            marker.setAttribute('refX', '9');
+            marker.setAttribute('refY', '3.5');
+            marker.setAttribute('orient', 'auto');
+            const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+            polygon.setAttribute('fill', '#999');
+            marker.appendChild(polygon);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+            
+            if (layoutMode === 'hierarchical') {
+                renderHierarchicalTree();
+            } else {
+                renderForceTree();
+            }
+        }
+        
+        function renderHierarchicalTree() {
+            const svg = document.getElementById('tree-svg');
+            const width = svg.clientWidth || 1200;
+            const height = svg.clientHeight || 800;
+            
+            // Calculate positions using hierarchical layout
+            const margin = { top: 50, right: 50, bottom: 50, left: 50 };
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+            
+            // Simple hierarchical layout
+            const nodeWidth = 200;
+            const nodeHeight = 120;
+            const levelHeight = nodeHeight + 100;
+            const nodeSpacing = 250;
+            
+            function calculatePositions(nodeId, x, y, level) {
+                if (nodePositions[nodeId]) return;
+                nodePositions[nodeId] = { x, y, level };
+                
+                const node = treeData.nodes[nodeId];
+                const numOptions = node.options.length;
+                
+                if (numOptions === 0) return; // End node
+                
+                if (numOptions === 1) {
+                    // Action node - single child
+                    const childId = node.options[0].next_id;
+                    calculatePositions(childId, x, y + levelHeight, level + 1);
+                } else {
+                    // Question node - multiple children
+                    const startX = x - ((numOptions - 1) * nodeSpacing) / 2;
+                    node.options.forEach((option, i) => {
+                        const childX = startX + i * nodeSpacing;
+                        calculatePositions(option.next_id, childX, y + levelHeight, level + 1);
+                    });
+                }
+            }
+            
+            // Start from root
+            calculatePositions(treeData.root_id, width / 2, margin.top + 50, 0);
+            
+            // Draw edges first (so they appear behind nodes)
+            for (const [nodeId, pos] of Object.entries(nodePositions)) {
+                const node = treeData.nodes[nodeId];
+                for (const option of node.options) {
+                    const childPos = nodePositions[option.next_id];
+                    if (!childPos) continue;
+                    
+                    const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    edge.setAttribute('class', 'edge');
+                    edge.setAttribute('d', `M${pos.x + nodeWidth/2},${pos.y + nodeHeight} L${childPos.x + nodeWidth/2},${childPos.y}`);
+                    svg.appendChild(edge);
+                }
+            }
+            
+            // Draw nodes
+            for (const [nodeId, pos] of Object.entries(nodePositions)) {
+                const node = treeData.nodes[nodeId];
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+                g.setAttribute('class', `node ${node.type}`);
+                g.setAttribute('data-id', nodeId);
+                
+                // Node rectangle
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', 0);
+                rect.setAttribute('y', 0);
+                rect.setAttribute('width', nodeWidth);
+                rect.setAttribute('height', nodeHeight);
+                rect.setAttribute('rx', 8);
+                rect.setAttribute('ry', 8);
+                rect.setAttribute('class', node.type);
+                g.appendChild(rect);
+                
+                // Type badge
+                const typeBadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                typeBadge.setAttribute('x', 10);
+                typeBadge.setAttribute('y', 20);
+                typeBadge.setAttribute('class', 'type');
+                typeBadge.textContent = node.type;
+                g.appendChild(typeBadge);
+                
+                // Node ID
+                const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                idText.setAttribute('x', 10);
+                idText.setAttribute('y', 40);
+                idText.setAttribute('class', 'node-id');
+                idText.textContent = node.id;
+                g.appendChild(idText);
+                
+                // Label
+                const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                labelText.setAttribute('x', 10);
+                labelText.setAttribute('y', 60);
+                labelText.setAttribute('class', 'label');
+                labelText.textContent = node.label;
+                g.appendChild(labelText);
+                
+                // Prompt (truncated)
+                const prompt = node.prompt.substring(0, 80) + (node.prompt.length > 80 ? '...' : '');
+                const promptText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                promptText.setAttribute('x', 10);
+                promptText.setAttribute('y', 80);
+                promptText.setAttribute('class', 'prompt');
+                promptText.textContent = prompt;
+                g.appendChild(promptText);
+                
+                // Options
+                node.options.forEach((option, i) => {
+                    const optionY = 100 + i * 18;
+                    const optionText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    optionText.setAttribute('x', 10);
+                    optionText.setAttribute('y', optionY);
+                    optionText.setAttribute('class', 'option');
+                    optionText.textContent = `→ ${option.label}`;
+                    g.appendChild(optionText);
+                });
+                
+                // Make clickable
+                g.style.cursor = 'pointer';
+                g.addEventListener('click', () => showNodeDetails(nodeId));
+                
+                svg.appendChild(g);
+            }
+        }
+        
+        function renderForceTree() {
+            const svg = document.getElementById('tree-svg');
+            const width = svg.clientWidth || 1200;
+            const height = svg.clientHeight || 800;
+            
+            // Create force layout
+            const nodes = Object.entries(treeData.nodes).map(([id, node]) => ({
+                id,
+                type: node.type,
+                label: node.label,
+                prompt: node.prompt
+            }));
+            
+            const links = [];
+            for (const [nodeId, node] of Object.entries(treeData.nodes)) {
+                for (const option of node.options) {
+                    links.push({ source: nodeId, target: option.next_id, label: option.label });
+                }
+            }
+            
+            // Create a simple force simulation
+            const nodeMap = {};
+            nodes.forEach((n, i) => { nodeMap[n.id] = i; });
+            
+            // Initial positions
+            const positions = nodes.map((n, i) => ({
+                x: width / 2 + (Math.random() - 0.5) * width / 4,
+                y: height / 2 + (Math.random() - 0.5) * height / 4,
+                id: n.id
+            }));
+            
+            // Simple force-directed layout (simplified)
+            const repulsion = 10000;
+            const stiffness = 0.1;
+            const iterations = 100;
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                // Repulsion between all nodes
+                for (let i = 0; i < positions.length; i++) {
+                    for (let j = i + 1; j < positions.length; j++) {
+                        const dx = positions[j].x - positions[i].x;
+                        const dy = positions[j].y - positions[i].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 1) continue;
+                        const force = repulsion / (dist * dist);
+                        positions[i].x -= dx / dist * force * 0.1;
+                        positions[i].y -= dy / dist * force * 0.1;
+                        positions[j].x += dx / dist * force * 0.1;
+                        positions[j].y += dy / dist * force * 0.1;
+                    }
+                }
+                
+                // Attraction along links
+                for (const link of links) {
+                    const sourceIdx = nodeMap[link.source];
+                    const targetIdx = nodeMap[link.target];
+                    const dx = positions[targetIdx].x - positions[sourceIdx].x;
+                    const dy = positions[targetIdx].y - positions[sourceIdx].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 1) continue;
+                    const force = stiffness * (dist - 200);
+                    positions[sourceIdx].x += dx / dist * force;
+                    positions[sourceIdx].y += dy / dist * force;
+                    positions[targetIdx].x -= dx / dist * force;
+                    positions[targetIdx].y -= dy / dist * force;
+                }
+            }
+            
+            // Store positions
+            nodes.forEach((n, i) => {
+                nodePositions[n.id] = { x: positions[i].x, y: positions[i].y };
+            });
+            
+            // Draw edges
+            for (const link of links) {
+                const sourcePos = nodePositions[link.source];
+                const targetPos = nodePositions[link.target];
+                
+                const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                edge.setAttribute('class', 'edge');
+                edge.setAttribute('d', `M${sourcePos.x},${sourcePos.y} L${targetPos.x},${targetPos.y}`);
+                svg.appendChild(edge);
+            }
+            
+            // Draw nodes
+            for (const [nodeId, pos] of Object.entries(nodePositions)) {
+                const node = treeData.nodes[nodeId];
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('transform', `translate(${pos.x - 100}, ${pos.y - 60})`);
+                g.setAttribute('class', `node ${node.type}`);
+                g.setAttribute('data-id', nodeId);
+                
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', 0);
+                rect.setAttribute('y', 0);
+                rect.setAttribute('width', 200);
+                rect.setAttribute('height', 120);
+                rect.setAttribute('rx', 8);
+                rect.setAttribute('ry', 8);
+                rect.setAttribute('class', node.type);
+                g.appendChild(rect);
+                
+                const typeBadge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                typeBadge.setAttribute('x', 10);
+                typeBadge.setAttribute('y', 20);
+                typeBadge.setAttribute('class', 'type');
+                typeBadge.textContent = node.type;
+                g.appendChild(typeBadge);
+                
+                const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                idText.setAttribute('x', 10);
+                idText.setAttribute('y', 40);
+                idText.setAttribute('class', 'node-id');
+                idText.textContent = node.id;
+                g.appendChild(idText);
+                
+                const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                labelText.setAttribute('x', 10);
+                labelText.setAttribute('y', 60);
+                labelText.setAttribute('class', 'label');
+                labelText.textContent = node.label;
+                g.appendChild(labelText);
+                
+                const prompt = node.prompt.substring(0, 60) + (node.prompt.length > 60 ? '...' : '');
+                const promptText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                promptText.setAttribute('x', 10);
+                promptText.setAttribute('y', 80);
+                promptText.setAttribute('class', 'prompt');
+                promptText.textContent = prompt;
+                g.appendChild(promptText);
+                
+                g.style.cursor = 'pointer';
+                g.addEventListener('click', () => showNodeDetails(nodeId));
+                
+                svg.appendChild(g);
+            }
+        }
+        
+        function showNodeDetails(nodeId) {
+            const node = treeData.nodes[nodeId];
+            const detailsDiv = document.getElementById('node-details');
+            
+            let optionsHtml = '';
+            for (const option of node.options) {
+                const nextNode = treeData.nodes[option.next_id];
+                optionsHtml += `<div class="option">
+                    <strong>${option.label}</strong> → ${nextNode ? nextNode.label : option.next_id}
+                </div>`;
+            }
+            
+            detailsDiv.innerHTML = `
+                <h3>Node Details: ${node.id}</h3>
+                <div style="margin: 10px 0;"><span class="type ${node.type}">${node.type}</span></div>
+                <div style="margin: 10px 0;"><strong>Label:</strong> ${node.label}</div>
+                <div style="margin: 10px 0;"><strong>Prompt:</strong> ${node.prompt}</div>
+                <div style="margin: 10px 0;"><strong>Options:</strong></div>
+                ${optionsHtml}
+            `;
+            detailsDiv.style.display = 'block';
+            
+            // Highlight the node in the tree
+            document.querySelectorAll('.node').forEach(n => {
+                n.style.stroke = n.getAttribute('data-id') === nodeId ? '#4285f4' : '#ddd';
+                n.style.strokeWidth = n.getAttribute('data-id') === nodeId ? '3' : '2';
+            });
+            
+            selectedNode = nodeId;
+        }
+        
+        // Load example on page load
+        window.addEventListener('DOMContentLoaded', loadExample);
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[TreeOut])
-def list_trees(db: Session = Depends(get_db)) -> list[TreeOut]:
+def list_trees(db: Session = Depends(get_db)) -> list[T1reeOut]:
     """Return all trees, newest first. Used by the home page picker.
 
     Optional nicety: only return the highest version per spec.
