@@ -3,10 +3,11 @@
 Fully implemented.
 """
 
+import io
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -53,7 +54,9 @@ def _extract_text_from_file(file: UploadFile) -> str:
 
 
 @router.post("", response_model=SpecOut, status_code=201)
-def upload_spec(name: str, file: UploadFile, db: Session = Depends(get_db)) -> SpecOut:
+def upload_spec(
+    name: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> SpecOut:
     """Upload a specification document and store its extracted text.
 
     Input: multipart form — `name` (display name), `file` (.pdf, .txt or .md).
@@ -67,7 +70,6 @@ def upload_spec(name: str, file: UploadFile, db: Session = Depends(get_db)) -> S
     """
     # Extract text from file
     try:
-        import io
         text_content = _extract_text_from_file(file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

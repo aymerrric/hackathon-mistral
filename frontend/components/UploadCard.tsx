@@ -28,10 +28,18 @@ export default function UploadCard() {
     return () => clearInterval(t);
   }, [phase]);
 
+  // Must match what the backend extracts text from (routers/specs.py).
+  const SUPPORTED = /\.(pdf|txt|md|markdown)$/i;
+
   function pick(f: File | null) {
     if (!f) return;
+    if (!SUPPORTED.test(f.name)) {
+      setError(`Unsupported file type: ${f.name}. Use PDF, TXT or MD.`);
+      return;
+    }
+    setError(null);
     setFile(f);
-    if (!name) setName(f.name.replace(/\.(pdf|txt|md)$/i, ""));
+    if (!name) setName(f.name.replace(SUPPORTED, ""));
   }
 
   async function submit() {
@@ -98,7 +106,7 @@ export default function UploadCard() {
         <input
           ref={fileInput}
           type="file"
-          accept=".pdf,.txt,.md"
+          accept=".pdf,.txt,.md,.markdown"
           hidden
           onChange={(e) => pick(e.target.files?.[0] ?? null)}
         />
