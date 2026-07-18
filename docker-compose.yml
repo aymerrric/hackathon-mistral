@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: calltree-db
+    environment:
+      POSTGRES_USER: calltree
+      POSTGRES_PASSWORD: calltree
+      POSTGRES_DB: calltree
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Applied automatically on first startup (empty volume only):
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+volumes:
+  pgdata:
