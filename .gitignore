@@ -13,3 +13,7 @@ next-env.d.ts
 
 # Misc
 .DS_Store
+
+# Data tooling (root uv project)
+.env
+data/

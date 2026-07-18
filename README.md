@@ -60,12 +60,22 @@ flowchart LR
 │       ├── schemas.py        # API contract (done)
 │       ├── routers/          # specs, trees, sessions, calls — TO IMPLEMENT
 │       └── services/         # tree_generator, transcription, call_analysis — TO IMPLEMENT
-└── frontend/
-    ├── lib/types.ts          # TS mirror of schemas.py (done)
-    ├── lib/api.ts            # typed fetch client — TO IMPLEMENT
-    ├── app/                  # pages — TO IMPLEMENT (specs in each file)
-    └── components/           # TreeViewer, GuidePanel, AudioUploader, CallReport — TO IMPLEMENT
+├── frontend/
+│   ├── lib/types.ts          # TS mirror of schemas.py (done)
+│   ├── lib/api.ts            # typed fetch client — TO IMPLEMENT
+│   ├── app/                  # pages — TO IMPLEMENT (specs in each file)
+│   └── components/           # TreeViewer, GuidePanel, AudioUploader, CallReport — TO IMPLEMENT
+├── notebooks/scripts/        # data-download scripts (uv-managed, see pyproject.toml)
+├── test-data/                # small git-tracked sample of MultiWOZ 2.2 for reference
+└── .agents/                  # agent skills, e.g. access-multiwoz-data
 ```
+
+### Training/reference data
+
+The demo trees can be validated against MultiWOZ 2.2 (task-oriented dialogues).
+See [`.agents/access-multiwoz-data/SKILL.md`](.agents/access-multiwoz-data/SKILL.md)
+for how to get access and download it; [`test-data/`](test-data/) has a small
+tracked sample so you can see the shape of the data without downloading anything.
 
 Every `TO IMPLEMENT` file contains a stub with a detailed docstring/comment
 spec — that comment is the task description.
