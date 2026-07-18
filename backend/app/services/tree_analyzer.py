@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from mistralai.client import MistralClient
+from mistralai import Mistral
 
 from app.config import settings
 from app.schemas import TreeStructure, TreeNode, TreeOption, NodeType
@@ -183,8 +183,8 @@ class TreeAnalysisReport:
 class TreeAnalyzer:
     """Analyzes decision trees for structural and semantic issues."""
     
-    def __init__(self, mistral_client: MistralClient | None = None):
-        self.client = mistral_client or (MistralClient(api_key=settings.mistral_api_key) 
+    def __init__(self, mistral_client: Mistral | None = None):
+        self.client = mistral_client or (Mistral(api_key=settings.mistral_api_key)
                                           if settings.mistral_api_key else None)
     
     # -------------------------------------------------------------------------
@@ -770,7 +770,7 @@ class TreeAnalyzer:
         prompt = self._build_refinement_prompt(tree, report, spec_text, iteration)
         
         try:
-            response = self.client.chat(
+            response = self.client.chat.complete(
                 model=settings.mistral_chat_model,
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},

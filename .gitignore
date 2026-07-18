@@ -10,6 +10,7 @@ node_modules/
 frontend/.next/
 frontend/.env.local
 next-env.d.ts
+*.tsbuildinfo
 
 # Misc
 .DS_Store

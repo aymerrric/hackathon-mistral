@@ -7,7 +7,7 @@ procedure documents (PDF, text, markdown).
 import json
 import re
 
-from mistralai.client import MistralClient
+from mistralai import Mistral
 
 from app.config import settings
 from app.schemas import TreeStructure
@@ -260,11 +260,11 @@ def generate_tree(spec_text: str) -> TreeStructure:
     prompt = _build_prompt(truncated_text)
     
     # Initialize Mistral client
-    client = MistralClient(api_key=settings.mistral_api_key)
-    
+    client = Mistral(api_key=settings.mistral_api_key)
+
     # First attempt
     try:
-        response = client.chat(
+        response = client.chat.complete(
             model=settings.mistral_chat_model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
@@ -310,7 +310,7 @@ Original spec:
 """
         
         try:
-            response = client.chat(
+            response = client.chat.complete(
                 model=settings.mistral_chat_model,
                 messages=[{"role": "user", "content": retry_prompt}],
                 response_format={"type": "json_object"},
