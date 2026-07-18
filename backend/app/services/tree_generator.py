@@ -7,7 +7,7 @@ procedure documents (PDF, text, markdown).
 import json
 import re
 
-from mistralai.client import MistralClient
+from mistralai import Mistral
 
 from app.config import settings
 from app.schemas import TreeStructure
@@ -75,6 +75,18 @@ def _build_prompt(spec_text: str) -> str:
 
 Your task: Convert the following procedure document into a decision tree JSON that FOLLOWS ALL CONSTRAINTS below. ANY violation will cause a 502 error.
 
+IMPORTANT: Every node MUST have ALL required fields. Missing label or prompt causes 502 error.
+
+=== MANDATORY FIELDS FOR EVERY NODE ===
+Each node in the nodes dictionary MUST have ALL 5 of these fields:
+1. "id": string - unique node identifier (e.g., "n1", "n2", "n3")
+2. "type": string - MUST be "question", "action", or "end"
+3. "label": string - REQUIRED. Short title (2-8 words). Describes the node purpose.
+4. "prompt": string - REQUIRED. The EXACT wording the agent should say/ask/do. Use quotes from the spec.
+5. "options": array - list of option objects with label and next_id
+
+MISSING label OR prompt = 502 ERROR. NO EXCEPTIONS.
+
 === ABSOLUTE REQUIREMENTS ===
 The output MUST be a valid JSON object with EXACTLY these fields at the top level:
 1. "root_id": string - the ID of the root node (MUST exist in nodes)
@@ -90,6 +102,45 @@ Each node object MUST have EXACTLY these fields:
 Each option object MUST have EXACTLY these fields:
 1. "label": string - the text for this option/choice
 2. "next_id": string - the ID of the node this option leads to (MUST exist in nodes)
+
+=== EXACT NODE FORMAT (FOLLOW PRECISELY) ===
+
+Each node MUST match ONE of these three formats EXACTLY:
+
+QUESTION NODE (2+ options):
+{{
+    "id": "n1",
+    "type": "question",
+    "label": "Short question title",
+    "prompt": "The exact question the agent should ask",
+    "options": [
+        {{"label": "Answer 1", "next_id": "n2"}},
+        {{"label": "Answer 2", "next_id": "n3"}}
+        // MUST have 2 or more options
+    ]
+}}
+
+ACTION NODE (1 option with label="Continue"):
+{{
+    "id": "n2",
+    "type": "action",
+    "label": "Action description",
+    "prompt": "The exact instruction the agent should follow",
+    "options": [
+        {{"label": "Continue", "next_id": "n3"}}
+        // MUST have exactly 1 option, label MUST be "Continue"
+    ]
+}}
+
+END NODE (0 options):
+{{
+    "id": "n3",
+    "type": "end",
+    "label": "End state",
+    "prompt": "Final message or instruction",
+    "options": []
+    // MUST have empty array, no options
+}}
 
 === STRICT CONSTRAINTS (VIOLATIONS CAUSE 502 ERRORS) ===
 
@@ -113,10 +164,13 @@ PATH CONSTRAINTS:
 - NO infinite loops allowed. All paths must terminate.
 - NO unreachable nodes. Every node MUST be reachable from root_id through some path.
 
-NODE ID FORMAT:
-- Use simple sequential IDs: "n1", "n2", "n3", ..., "n50"
-- Do NOT use: "node1", "step_1", UUIDs, or any other format.
-- Do NOT skip numbers. If you have 5 nodes, use n1 through n5.
+NODE ID FORMAT (CRITICAL):
+- Use ONLY simple sequential IDs: "n1", "n2", "n3", "n4", ... up to "n99"
+- Do NOT use: "node1", "step_1", "n1-A", "n3-A", UUIDs, or ANY other format.
+- Do NOT use hyphens, underscores, or any special characters in IDs.
+- Do NOT skip numbers. If you have nodes n1, n2, the next MUST be n3, not n10.
+- IDs with suffixes like "n3-A", "n3-B" will cause 502 errors.
+- ALL node IDs must be in the format: letter 'n' followed by one or more digits only.
 
 FIELD CONSTRAINTS:
 - action nodes: The single option MUST have label exactly equal to "Continue" (case-sensitive).
@@ -130,9 +184,10 @@ BEFORE returning your JSON, verify ALL of these:
 [ ] Top-level has "root_id" (string) AND "nodes" (object)
 [ ] nodes is NOT empty (has at least one node)
 [ ] root_id value exists as a key in nodes
-[ ] Every node has: id, type, label, prompt, options
+[ ] Every node has ALL 5 REQUIRED fields: id, type, label, prompt, options
 [ ] Every node.id matches its key in the nodes object
 [ ] All node types are valid: "question", "action", or "end"
+[ ] ALL node IDs follow format "n" + digits ONLY (no n3-A, n3-B, etc.)
 [ ] question nodes have 2+ options
 [ ] action nodes have exactly 1 option with label="Continue"
 [ ] end nodes have exactly 0 options (empty array [])
@@ -141,6 +196,8 @@ BEFORE returning your JSON, verify ALL of these:
 [ ] No circular references (n1 -> n2 -> n3 -> n1 is FORBIDDEN)
 [ ] All paths from root eventually reach an end node
 [ ] No unreachable nodes exist in the tree
+[ ] NO node is missing label field
+[ ] NO node is missing prompt field
 
 === COMMON ERRORS TO AVOID ===
 
@@ -171,6 +228,24 @@ INVALID - non-existent next_id:
 {{
     "root_id": "n1",
     "nodes": {{"n1": {{"id": "n1", "type": "question", "label": "Q", "prompt": "P?", "options": [{{"label": "A", "next_id": "n99"}}]}}}}  // n99 doesn't exist!
+}}
+
+INVALID - missing label and prompt fields:
+{{
+    "root_id": "n1",
+    "nodes": {{"n1": {{"id": "n1", "type": "question", "options": [{{"label": "A", "next_id": "n2"}}]}}}}  // MISSING label and prompt!
+}}
+
+INVALID - node ID with suffix (n3-A):
+{{
+    "root_id": "n1",
+    "nodes": {{"n1": {{"id": "n1", "type": "question", "label": "Q", "prompt": "P?", "options": [...]}}, "n3-A": {{"id": "n3-A", ...}}}}  // n3-A is INVALID!
+}}
+
+INVALID - action node missing label="Continue":
+{{
+    "root_id": "n1",
+    "nodes": {{"n1": {{"id": "n1", "type": "action", "label": "Do it", "prompt": "Do it now", "options": [{{"label": "Next", "next_id": "n2"}}]}}}}  // label must be "Continue"
 }}
 
 === JSON CONTRACT (STRICT) ===
@@ -360,11 +435,11 @@ def generate_tree(spec_text: str) -> TreeStructure:
     prompt = _build_prompt(truncated_text)
     
     # Initialize Mistral client
-    client = MistralClient(api_key=settings.mistral_api_key)
+    client = Mistral(api_key=settings.mistral_api_key)
 
     # First attempt
     try:
-        response = client.chat(
+        response = client.chat.complete(
             model=settings.mistral_chat_model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
@@ -394,6 +469,23 @@ def generate_tree(spec_text: str) -> TreeStructure:
         retry_prompt = f"""YOUR PREVIOUS ATTEMPT FAILED with this error:
 
 {error_msg}
+
+YOU MUST FIX ALL ISSUES. READ THIS CAREFULLY:
+
+CHECK EVERY NODE IN YOUR OUTPUT:
+- Does EVERY node have: id, type, label, prompt, options? Missing ANY = 502 error.
+- Are ALL node IDs in format "n1", "n2", "n3"? NO suffixes like "n3-A" or "n3-B" ALLOWED.
+- Do ALL question nodes have >= 2 options?
+- Do ALL action nodes have exactly 1 option with label EXACTLY equal to "Continue"?
+- Do ALL end nodes have empty options array []?
+- Do ALL option.next_id values reference EXISTING node keys?
+
+COMMON MISTAKES FROM YOUR ERROR:
+- Missing "label" field in nodes
+- Missing "prompt" field in nodes
+- Using node IDs like "n3-A", "n3-B" (INVALID - use only "n1", "n2", "n3")
+- question nodes with only 1 option (MUST have 2+)
+- action nodes with wrong label (MUST be "Continue")
 
 YOU MUST FIX ALL ISSUES. Common mistakes to check:
 
@@ -430,7 +522,7 @@ Original spec:
 """
         
         try:
-            response = client.chat(
+            response = client.chat.complete(
                 model=settings.mistral_chat_model,
                 messages=[{"role": "user", "content": retry_prompt}],
                 response_format={"type": "json_object"},

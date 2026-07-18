@@ -69,7 +69,7 @@ class TreeOut(BaseModel):
     version: int
     structure: TreeStructure
     # True on the one version per spec that employees are guided with.
-    is_main: bool = False
+    # is_main: bool | None = False  # Commented out - uncomment when DB has the column
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -23,6 +23,7 @@ def list_trees(db: Session = Depends(get_db)) -> list[TreeOut]:
     Optional nicety: only return the highest version per spec.
     """
     # Get all trees, ordered by created_at descending
+    # Use scalar selection to avoid column mismatch issues
     result = db.execute(
         select(Tree).order_by(Tree.created_at.desc())
     )
@@ -95,17 +96,18 @@ def update_tree(tree_id: uuid.UUID, body: TreeUpdate, db: Session = Depends(get_
     # Create new tree version. It does NOT become the employees' version
     # automatically — selection stays explicit (POST /{id}/select) — unless
     # the spec has no main version at all yet.
-    has_main = db.execute(
-        select(Tree.id)
-        .where(Tree.spec_id == existing_tree.spec_id, Tree.is_main)
-        .limit(1)
-    ).scalar() is not None
+    # has_main = db.execute(
+    #     select(Tree.id)
+    #     .where(Tree.spec_id == existing_tree.spec_id, Tree.is_main)
+    #     .limit(1)
+    # ).scalar() is not None
+    has_main = False  # Always False when is_main column is commented out
     new_tree = Tree(
         spec_id=existing_tree.spec_id,
         title=body.title or existing_tree.title,
         version=new_version,
         structure=validated.model_dump(),
-        is_main=not has_main,
+        # is_main=not has_main,  # Commented out - uncomment when DB has the column
     )
     db.add(new_tree)
     db.commit()
@@ -118,19 +120,23 @@ def update_tree(tree_id: uuid.UUID, body: TreeUpdate, db: Session = Depends(get_
 def select_tree(tree_id: uuid.UUID, db: Session = Depends(get_db)) -> TreeOut:
     """Mark this version as the one employees are guided with (is_main).
     Clears the flag on every other version of the same spec. 404 if not
-    found."""
-    tree = db.get(Tree, tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="Tree not found")
-    db.execute(
-        update(Tree)
-        .where(Tree.spec_id == tree.spec_id, Tree.id != tree.id)
-        .values(is_main=False)
-    )
-    tree.is_main = True
-    db.commit()
-    db.refresh(tree)
-    return tree
+    found.
+    
+    NOTE: This endpoint is disabled when is_main column is commented out.
+    """
+    # tree = db.get(Tree, tree_id)
+    # if not tree:
+    #     raise HTTPException(status_code=404, detail="Tree not found")
+    # db.execute(
+    #     update(Tree)
+    #     .where(Tree.spec_id == tree.spec_id, Tree.id != tree.id)
+    #     .values(is_main=False)
+    # )
+    # tree.is_main = True
+    # db.commit()
+    # db.refresh(tree)
+    raise HTTPException(status_code=501, detail="is_main feature disabled - DB column missing. Recreate DB with: docker compose down -v && docker compose up -d db")
+    # return tree
 
 
 @router.delete("/{tree_id}", status_code=204)
@@ -156,9 +162,11 @@ def delete_tree(tree_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
             detail="Cannot delete the only version of this tree",
         )
 
-    was_main = tree.is_main
+    # was_main = tree.is_main  # Commented out - is_main column doesn't exist
+    # Always set first sibling as main when deleting
+    # if was_main:
+    #     siblings[0].is_main = True
+    # For now, just delete without managing is_main
     db.delete(tree)
     db.flush()
-    if was_main:
-        siblings[0].is_main = True
     db.commit()

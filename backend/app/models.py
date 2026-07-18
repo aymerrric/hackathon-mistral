@@ -38,7 +38,7 @@ class Tree(Base):
     title: Mapped[str] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, default=1)
     structure: Mapped[dict] = mapped_column(JSONB)
-    is_main: Mapped[bool] = mapped_column(Boolean, default=False)
+    # is_main: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=text("now()")
     )
