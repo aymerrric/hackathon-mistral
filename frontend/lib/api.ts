@@ -135,6 +135,20 @@ export async function assist(
   return out.reply;
 }
 
+// --- Voice agent (realtime, Voxtral) ---------------------------------------
+
+/**
+ * WS /api/voice/ws — live AI voice agent that conducts the call by following
+ * the tree. Client streams binary PCM16 @ 16 kHz frames; server sends JSON
+ * events (ready / partial / user / agent / audio / error). See
+ * backend/app/routers/voice.py for the full protocol.
+ */
+export function voiceWsUrl(treeId: string, operator?: string): string {
+  const q = new URLSearchParams({ tree_id: treeId });
+  if (operator) q.set("operator", operator);
+  return `${API.replace(/^http/, "ws")}/api/voice/ws?${q.toString()}`;
+}
+
 // --- Calls & analysis ------------------------------------------------------
 
 /** POST /api/calls — multipart: tree_id + audio file. Slow (transcription). */

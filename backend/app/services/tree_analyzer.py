@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 from app.config import settings
 from app.schemas import TreeStructure, TreeNode, TreeOption, NodeType

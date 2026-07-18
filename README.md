@@ -10,6 +10,11 @@ generate a **ground-truth decision tree**, then:
    **Voxtral** and judged by Mistral against the tree: which steps were
    followed, which were skipped or deviated from, with quotes and a 0-100
    adherence score.
+3. **Voice** — talk to an AI agent that conducts the call itself, rigorously
+   following the tree: Voxtral realtime STT → tree-following Mistral agent →
+   Voxtral TTS. Works in the browser (Voice tab) and over a real phone line
+   via Twilio. Voice sessions land in the Log, and finished conversations are
+   stored as transcribed calls so they can be audited like any recording.
 
 ## Architecture
 
@@ -129,6 +134,9 @@ reach an `end` node.
 | GET | `/api/calls/{id}` | Get call + transcript |
 | POST | `/api/calls/{id}/analyze` | Judge call vs. tree via Mistral (slow) |
 | GET | `/api/calls/{id}/analysis` | Latest analysis |
+| WS | `/api/voice/ws` | Live AI voice agent (browser mic ⇄ Voxtral realtime + TTS) |
+| POST | `/api/twilio/voice` | Twilio "A call comes in" webhook (returns TwiML) |
+| WS | `/api/twilio/media` | Twilio Media Streams leg of the phone agent |
 
 Full request/response specs live in the router docstrings
 (`backend/app/routers/*.py`); interactive docs at
@@ -204,8 +212,30 @@ Open http://localhost:3000.
    call) → "Analyze call" → score, per-step verdicts with quotes, matched
    path highlighted on the tree.
 
+5. **Voice** → click "Start voice call" and talk: the AI agent greets you,
+   asks the tree's questions, maps your spoken answers onto the branches and
+   advances the procedure. Side questions get short answers grounded in the
+   tree, then it steers back. When the call ends it appears in the Log and
+   (with its transcript) in Audit.
+
 Tip: record your own 2-minute fake call following (and deliberately breaking)
 the tree — a call with one obvious deviation makes the best demo.
+
+## Phone calls via Twilio
+
+The same agent picks up real phone calls. No Twilio SDK or credentials are
+needed server-side — the integration is an inbound webhook plus a
+bidirectional [Media Stream](https://www.twilio.com/docs/voice/media-streams)
+(mu-law 8 kHz straight into Voxtral realtime, TTS back onto the line, with
+barge-in support):
+
+1. Expose the backend publicly: `ngrok http 8000`
+2. In the Twilio console, point your number's **A call comes in** to
+   `POST https://<your-ngrok-host>/api/twilio/voice`
+   (add `?tree_id=<uuid>` to pin a specific tree — default is the newest
+   main tree).
+3. Call the number. The call shows up in the Log as
+   `AI voice agent (phone · +…)` and its transcript in Audit.
 
 ## Suggested split (frontend is implemented, backend is the critical path)
 

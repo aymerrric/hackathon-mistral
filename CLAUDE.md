@@ -3,7 +3,12 @@
 CallTree — hackathon project (Mistral hackathon). Upload a call-procedure
 spec document → Mistral generates a ground-truth decision tree → employees
 are guided through it live, and recorded calls are transcribed (Voxtral) and
-judged against it. Full architecture, API table, and demo flow: see README.md.
+judged against it. There is also a live AI voice agent (web Voice tab and
+Twilio phone calls) that conducts calls itself by following the tree —
+Voxtral realtime STT → tree state machine + Mistral chat → Voxtral TTS
+(`services/voice_agent.py`, `services/stt.py`, `services/tts.py`,
+`routers/voice.py`, `routers/twilio_voice.py`). Full architecture, API
+table, and demo flow: see README.md.
 
 ## Commands
 
@@ -57,6 +62,12 @@ by setup) for the AI endpoints; CRUD endpoints work without it.
 
 - `db/schema.sql` only auto-applies on a **fresh** Postgres volume — after
   changing it, run `npm run db:reset`.
+- The Mistral SDK is **2.x**: import with `from mistralai.client import
+  Mistral` (and `mistralai.client.models`), NOT `from mistralai import
+  Mistral` — 1.x-style imports fail.
+- The voice agent never lets the LLM pick tree nodes: the LLM only maps the
+  caller's utterance onto the current node's options; path advancement is
+  deterministic (`voice_agent.walk_option`). Keep it that way.
 - `frontend/lib/api.ts` reads `NEXT_PUBLIC_API_URL` from `.env.local`.
 - Reference data: MultiWOZ 2.2 sample in `test-data/`; download tooling in
   `notebooks/scripts/` (see `.agents/access-multiwoz-data/SKILL.md`).

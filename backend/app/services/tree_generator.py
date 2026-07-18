@@ -7,7 +7,7 @@ procedure documents (PDF, text, markdown).
 import json
 import re
 
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 from app.config import settings
 from app.schemas import TreeStructure

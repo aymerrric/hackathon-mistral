@@ -11,7 +11,7 @@ and the analyzer works from raw text.
 import json
 from pathlib import Path
 
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 from app.config import settings
 from app.schemas import TranscriptTurn

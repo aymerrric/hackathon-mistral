@@ -86,6 +86,28 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
   const [versionError, setVersionError] = useState<string | null>(null);
   const [versionBusy, setVersionBusy] = useState(false);
   const verMenuRef = useRef<HTMLDivElement>(null);
+  // Focus request for an input that only exists after the next render
+  // (new node's label / a freshly added option row).
+  const [pendingFocus, setPendingFocus] = useState<
+    | { nodeId: string; field: "label" }
+    | { nodeId: string; field: "option"; index: number }
+    | null
+  >(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const optionInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (!pendingFocus || selected !== pendingFocus.nodeId) return;
+    const el =
+      pendingFocus.field === "label"
+        ? labelInputRef.current
+        : optionInputRefs.current[pendingFocus.index];
+    if (el) {
+      el.focus();
+      el.select();
+      setPendingFocus(null);
+    }
+  }, [pendingFocus, selected, draft]);
 
   useEffect(() => {
     setVersionsOpen(false);
@@ -141,6 +163,19 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
       fn(next);
       return next;
     });
+  }
+
+  // "+" on a question node in the graph: new answer branch to a new node,
+  // then focus the new node's label field.
+  function addAnswer(questionId: string) {
+    if (!draft) return;
+    const id = freshId(draft);
+    mutate((s) => {
+      s.nodes[id] = { id, type: "end", label: "New step", prompt: "", options: [] };
+      s.nodes[questionId].options.push({ label: "", next_id: id });
+    });
+    setSelected(id);
+    setPendingFocus({ nodeId: id, field: "label" });
   }
 
   async function makeMain() {
@@ -324,6 +359,7 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
           structure={draft}
           selectedId={selected ?? undefined}
           onNodeClick={setSelected}
+          onAddOption={addAnswer}
         />
 
         <aside className="detail">
@@ -387,6 +423,7 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
               <div style={{ marginBottom: 14 }}>
                 <label className="label">Label</label>
                 <input
+                  ref={labelInputRef}
                   className="input"
                   value={node.label}
                   onChange={(e) =>
@@ -418,6 +455,9 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
                   {node.options.map((opt, i) => (
                     <div className="opt-row" key={i}>
                       <input
+                        ref={(el) => {
+                          optionInputRefs.current[i] = el;
+                        }}
                         className="input"
                         value={opt.label}
                         placeholder="Option label"
@@ -465,7 +505,7 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
                   {(node.type === "question" || node.options.length === 0) && (
                     <button
                       className="btn btn-ghost"
-                      onClick={() =>
+                      onClick={() => {
                         mutate((s) => {
                           const targets = Object.keys(s.nodes).filter(
                             (id) => id !== node.id
@@ -474,8 +514,13 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
                             label: node.type === "action" ? "Continue" : "",
                             next_id: targets[0] ?? node.id,
                           });
-                        })
-                      }
+                        });
+                        setPendingFocus({
+                          nodeId: node.id,
+                          field: "option",
+                          index: node.options.length,
+                        });
+                      }}
                     >
                       + Add option
                     </button>

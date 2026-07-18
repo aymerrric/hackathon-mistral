@@ -27,6 +27,8 @@ export interface TreeViewerProps {
   verdictByNode?: Record<string, "followed" | "deviated" | "skipped">;
   onNodeClick?: (nodeId: string) => void;
   selectedId?: string;
+  /** When set, question nodes get a "+" button that calls this to add an answer branch. */
+  onAddOption?: (nodeId: string) => void;
 }
 
 const NODE_W = 200;
@@ -145,6 +147,7 @@ export default function TreeViewer({
   verdictByNode,
   onNodeClick,
   selectedId,
+  onAddOption,
 }: TreeViewerProps) {
   const layout = useMemo(() => computeLayout(structure), [structure]);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -334,6 +337,24 @@ export default function TreeViewer({
             </button>
           );
         })}
+
+        {onAddOption &&
+          layout.nodes.map((n) => {
+            const def = structure.nodes[n.id];
+            if (n.missing || def?.type !== "question") return null;
+            return (
+              <button
+                key={`add-${n.key}`}
+                className="gnode-add"
+                style={{ left: n.x + NODE_W + 8, top: n.y + NODE_H / 2 - 13 }}
+                title="Add an answer branch"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onAddOption(n.id)}
+              >
+                +
+              </button>
+            );
+          })}
       </div>
 
       <div className="tree-controls" onPointerDown={(e) => e.stopPropagation()}>

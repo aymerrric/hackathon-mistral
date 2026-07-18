@@ -7,7 +7,7 @@ supporting quotes, an overall 0-100 adherence score and a short summary.
 
 import json
 
-from mistralai import Mistral
+from mistralai.client import Mistral
 from pydantic import BaseModel
 
 from app.config import settings

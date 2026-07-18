@@ -14,8 +14,9 @@ psycopg = { extras = ["binary"], version = "^3.1" }
 pydantic = "^2.7"
 pydantic-settings = "^2.2"
 python-multipart = "^0.0.9"     # multipart uploads (spec docs, audio files)
-mistralai = "^1.12"              # Mistral API client (chat + Voxtral audio)
+mistralai = { extras = ["realtime"], version = "^2.7" }
 pypdf = "^4.2"                  # PDF text extraction for spec documents
+audioop-lts = {version = "^0.2", python = ">=3.13"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"
