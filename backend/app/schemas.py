@@ -113,6 +113,28 @@ class SessionOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Assist (operator copilot chat)
+# ---------------------------------------------------------------------------
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AssistRequest(BaseModel):
+    tree_id: uuid.UUID
+    # Node the operator is currently on in guided mode, if any — lets the
+    # model answer relative to "where we are" in the procedure.
+    node_id: str | None = None
+    messages: list[ChatMessage]  # full history, oldest first
+
+
+class AssistReply(BaseModel):
+    reply: str
+
+
+# ---------------------------------------------------------------------------
 # Calls & analysis
 # ---------------------------------------------------------------------------
 

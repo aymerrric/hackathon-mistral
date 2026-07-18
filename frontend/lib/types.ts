@@ -59,6 +59,11 @@ export interface GuidanceSession {
   ended_at: string | null;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface TranscriptTurn {
   speaker: "agent" | "caller" | "unknown";
   start: number;

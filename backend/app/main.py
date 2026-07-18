@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import calls, sessions, specs, trees
+from app.routers import assist, calls, sessions, specs, trees
 from app.routers import tree_analysis
 
 app = FastAPI(title="CallTree API", version="0.1.0")
@@ -26,6 +26,7 @@ app.include_router(trees.router, prefix="/api/trees", tags=["trees"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(calls.router, prefix="/api/calls", tags=["calls"])
 app.include_router(tree_analysis.router, prefix="/api", tags=["analysis"])
+app.include_router(assist.router, prefix="/api/assist", tags=["assist"])
 
 
 @app.get("/api/health")

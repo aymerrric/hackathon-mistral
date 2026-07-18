@@ -64,9 +64,9 @@ flowchart LR
 │       └── services/         # tree_generator, transcription, call_analysis — TO IMPLEMENT
 ├── frontend/
 │   ├── lib/types.ts          # TS mirror of schemas.py (done)
-│   ├── lib/api.ts            # typed fetch client — TO IMPLEMENT
-│   ├── app/                  # pages — TO IMPLEMENT (specs in each file)
-│   └── components/           # TreeViewer, GuidePanel, AudioUploader, CallReport — TO IMPLEMENT
+│   ├── lib/api.ts            # typed fetch client (done)
+│   ├── app/                  # pages (done, except audit — TO IMPLEMENT)
+│   └── components/           # done, except AudioUploader + CallReport — TO IMPLEMENT
 ├── notebooks/scripts/        # data-download scripts (uv-managed, see pyproject.toml)
 ├── test-data/                # small git-tracked sample of MultiWOZ 2.2 for reference
 └── .agents/                  # agent skills, e.g. access-multiwoz-data
@@ -123,6 +123,7 @@ reach an `end` node.
 | GET | `/api/sessions/{id}` | Get session + current node |
 | POST | `/api/sessions/{id}/step` | Record a choice, advance |
 | POST | `/api/sessions/{id}/finish` | Complete/abandon the session |
+| POST | `/api/assist` | Operator copilot chat, grounded in the tree |
 | POST | `/api/calls` | Upload audio + transcribe with Voxtral (slow) |
 | GET | `/api/calls/{id}` | Get call + transcript |
 | POST | `/api/calls/{id}/analyze` | Judge call vs. tree via Mistral (slow) |
@@ -192,23 +193,26 @@ Open http://localhost:3000.
 ## Demo flow
 
 1. Home page → upload a spec (PDF/txt/md) → tree is generated → tree view.
-2. "Guide a call" → step through the tree with big buttons → finish.
-3. "Audit a recording" → upload an mp3/wav of a (staged) call → transcript →
-   "Analyze" → score, per-step verdicts with quotes, highlighted tree path.
+2. Switch to **Guide** (tabs in the top bar) → step through the call with big
+   buttons or the 1-9 number keys → finish. The bottom chat bar answers
+   procedure questions via `/api/assist`.
+3. **Tree** mode → browse the full tree, click a node to edit wording or
+   branches → "Save as v2" (new version, old sessions keep the old one).
+4. Audit (still to build) → upload an mp3/wav of a (staged) call →
+   transcript → "Analyze" → score, per-step verdicts with quotes.
 
 Tip: record your own 2-minute fake call following (and deliberately breaking)
 the tree — a call with one obvious deviation makes the best demo.
 
-## Suggested split for 4 coders
+## Suggested split (frontend is implemented, backend is the critical path)
 
 - **A (backend core)**: routers `specs.py`, `trees.py`, `sessions.py` — pure
-  CRUD + path logic, no AI. Unblocks everyone; start here.
+  CRUD + path logic, no AI. Unblocks the whole UI; start here.
 - **B (backend AI)**: `services/` (tree_generator, transcription,
-  call_analysis) + router `calls.py`. Owns the Mistral prompts.
-- **C (frontend flows)**: `lib/api.ts`, home page, guided-call page,
-  `GuidePanel`.
-- **D (frontend viz)**: `TreeViewer`, audit page, `AudioUploader`,
-  `CallReport`.
+  call_analysis) + routers `calls.py` and `assist.py`. Owns the Mistral
+  prompts.
+- **C (frontend audit)**: the only frontend still stubbed — audit page,
+  `AudioUploader`, `CallReport`.
 
 Ground rules: schemas.py / types.ts / schema.sql are frozen contracts —
 changing one means changing its mirror in the same commit and telling the

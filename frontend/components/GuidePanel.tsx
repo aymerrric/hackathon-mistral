@@ -3,17 +3,8 @@
 import type { TreeNode } from "@/lib/types";
 
 /**
- * The big "current step" card in guided mode. TO IMPLEMENT.
- *
- * Spec:
- *  - Shows node.prompt in large readable text (this is what the employee
- *    reads aloud), node.label small above it.
- *  - question: one large button per option (full width, generous padding).
- *  - action: single "Done — continue" button (options[0]).
- *  - end: green "call resolved" styling, no options; parent renders the
- *    Finish button.
- *  - Buttons call onChoose(optionIndex); disable them while `busy` (the
- *    step request is in flight) to prevent double-clicks.
+ * The current step during a live call. The prompt is what the operator says
+ * out loud; options advance the session. Number keys are bound by the page.
  */
 export interface GuidePanelProps {
   node: TreeNode;
@@ -21,6 +12,56 @@ export interface GuidePanelProps {
   onChoose: (optionIndex: number) => void;
 }
 
-export default function GuidePanel(props: GuidePanelProps) {
-  return <p>TODO: implement GuidePanel</p>;
+const KICKER: Record<TreeNode["type"], string> = {
+  question: "Ask",
+  action: "Do",
+  end: "Close",
+};
+
+export default function GuidePanel({ node, busy, onChoose }: GuidePanelProps) {
+  return (
+    <div className="node-card">
+      <div className="node-kicker">
+        {node.type === "end" ? (
+          <span className="end-banner">Outcome reached</span>
+        ) : (
+          <>
+            <span className={`tv-badge ${node.type}`} />
+            {KICKER[node.type]} · {node.label}
+          </>
+        )}
+      </div>
+
+      <p className="node-prompt">{node.prompt}</p>
+
+      {node.type === "question" && (
+        <div className="options">
+          {node.options.map((opt, i) => (
+            <button
+              key={i}
+              className="option-btn"
+              disabled={busy}
+              onClick={() => onChoose(i)}
+            >
+              <span className="option-key">{i + 1}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {node.type === "action" && (
+        <div className="options">
+          <button
+            className="option-btn"
+            disabled={busy}
+            onClick={() => onChoose(0)}
+          >
+            <span className="option-key">↵</span>
+            Done, continue
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
