@@ -1,17 +1,55 @@
 """Spec document endpoints.
 
-TO IMPLEMENT — each function body is a spec; replace NotImplementedError.
+Fully implemented.
 """
 
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models import Spec, Tree
 from app.schemas import SpecOut, TreeOut
+from app.services import tree_generator
 
 router = APIRouter()
+
+
+def _extract_text_from_pdf(file_content: bytes) -> str:
+    """Extract text from PDF using pypdf."""
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(file_content))
+        text = ""
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n\n"
+        return text.strip()
+    except Exception as e:
+        raise ValueError(f"Failed to extract text from PDF: {e}")
+
+
+def _extract_text_from_file(file: UploadFile) -> str:
+    """Extract text from uploaded file (PDF, txt, or md)."""
+    filename = Path(file.filename or "").suffix.lower()
+    
+    # Read file content
+    content = file.file.read()
+    file.file.seek(0)  # Reset file pointer
+    
+    if filename == ".pdf":
+        return _extract_text_from_pdf(content)
+    elif filename in (".txt", ".md", ".markdown"):
+        try:
+            return content.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ValueError("File is not valid UTF-8 text")
+    else:
+        raise ValueError(f"Unsupported file type: {filename}")
 
 
 @router.post("", response_model=SpecOut, status_code=201)
@@ -27,13 +65,37 @@ def upload_spec(name: str, file: UploadFile, db: Session = Depends(get_db)) -> S
     Note: this does NOT generate the tree — that is a separate, explicit call
     so the UI can show a "generating…" state.
     """
-    raise NotImplementedError
+    # Extract text from file
+    try:
+        import io
+        text_content = _extract_text_from_file(file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    if not text_content or not text_content.strip():
+        raise HTTPException(status_code=400, detail="Extracted text is empty")
+    
+    # Create spec in database
+    spec = Spec(
+        name=name,
+        original_filename=file.filename,
+        content_text=text_content
+    )
+    db.add(spec)
+    db.commit()
+    db.refresh(spec)
+    
+    return spec
 
 
 @router.get("", response_model=list[SpecOut])
 def list_specs(db: Session = Depends(get_db)) -> list[SpecOut]:
     """Return all specs, newest first."""
-    raise NotImplementedError
+    result = db.execute(
+        select(Spec).order_by(Spec.created_at.desc())
+    )
+    specs = result.scalars().all()
+    return specs
 
 
 @router.post("/{spec_id}/generate-tree", response_model=TreeOut, status_code=201)
@@ -51,4 +113,38 @@ def generate_tree(spec_id: uuid.UUID, db: Session = Depends(get_db)) -> TreeOut:
     Synchronous on purpose (hackathon): generation takes ~10-30s, the
     frontend shows a spinner. No task queue.
     """
-    raise NotImplementedError
+    # Get spec
+    spec = db.get(Spec, spec_id)
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found")
+    
+    # Generate tree
+    try:
+        tree_structure = tree_generator.generate_tree(spec.content_text)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Tree generation failed: {str(e)}")
+    
+    # Get max version for this spec
+    result = db.execute(
+        select(Tree.version)
+        .where(Tree.spec_id == spec_id)
+        .order_by(Tree.version.desc())
+        .limit(1)
+    )
+    max_version = result.scalar() or 0
+    new_version = max_version + 1
+    
+    # Create tree
+    tree = Tree(
+        spec_id=spec_id,
+        title=spec.name,
+        version=new_version,
+        structure=tree_structure.model_dump()
+    )
+    db.add(tree)
+    db.commit()
+    db.refresh(tree)
+    
+    return tree
