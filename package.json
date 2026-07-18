@@ -1,0 +1,12 @@
+{
+  "name": "calltree",
+  "private": true,
+  "description": "Root launcher — see scripts/dev.mjs. Requires Node 18+, no npm install needed at the root.",
+  "scripts": {
+    "setup": "node scripts/dev.mjs --setup-only",
+    "dev": "node scripts/dev.mjs",
+    "db": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d db"
+  }
+}

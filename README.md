@@ -48,6 +48,8 @@ flowchart LR
 ### Repository layout
 
 ```
+├── package.json              # root npm scripts: setup, dev, db, db:down, db:reset
+├── scripts/dev.mjs           # OS-agnostic launcher (plain Node, no deps)
 ├── docker-compose.yml        # PostgreSQL (schema auto-applied on first start)
 ├── db/schema.sql             # DB source of truth + JSONB shape docs
 ├── backend/
@@ -134,6 +136,27 @@ Full request/response specs live in the router docstrings
 
 Prerequisites: **Docker**, **Python 3.11+** with **Poetry**, **Node 18+**,
 and a **Mistral API key** (console.mistral.ai).
+
+### Quick start (one command)
+
+From the repo root (works on Windows, macOS and Linux — the launcher is
+plain Node, no `npm install` needed at the root):
+
+```bash
+npm run setup   # first time: creates env files, installs all dependencies
+                # then put your MISTRAL_API_KEY in backend/.env
+npm run dev     # starts DB + backend + frontend together
+```
+
+`npm run dev` re-checks setup (cheap), starts Postgres (Docker, schema
+auto-applied), waits for it to be ready, then runs the FastAPI backend
+(:8000) and the Next.js frontend (:3000) with prefixed `[api]`/`[web]` logs.
+Ctrl-C stops both; if one crashes the other is stopped too. The DB container
+stays up — `npm run db:down` stops it, `npm run db:reset` wipes and
+recreates it.
+
+The manual steps below do the same thing service by service — useful when you
+only work on one of them.
 
 ### 1. Database
 
