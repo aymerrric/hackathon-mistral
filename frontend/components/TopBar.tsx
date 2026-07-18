@@ -25,7 +25,9 @@ export default function TopBar() {
       ? "log"
       : pathname.endsWith("/audit")
         ? "audit"
-        : "tree";
+        : pathname.endsWith("/flow")
+          ? "flow"
+          : "tree";
 
   useEffect(() => {
     listTrees()
@@ -162,6 +164,12 @@ export default function TopBar() {
             onClick={() => router.push(`/trees/${treeId}/log`)}
           >
             Log
+          </button>
+          <button
+            className={`tab ${mode === "flow" ? "active" : ""}`}
+            onClick={() => router.push(`/trees/${treeId}/flow`)}
+          >
+            Flow
           </button>
         </nav>
       )}
