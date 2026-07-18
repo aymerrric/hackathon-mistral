@@ -1,0 +1,20 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Presentation"
+  navbar:
+    left:
+      - href: index.html
+        text: Slides
+
+format:
+  revealjs:
+    theme: [dark, custom.scss]
+    transition: slide
+    slide-level: 2
+    mermaid:
+      theme: dark
+    preview-links: auto
+    footer: "CallTree — Mistral Hackathon"

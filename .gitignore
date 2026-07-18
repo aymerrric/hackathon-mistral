@@ -17,3 +17,6 @@ next-env.d.ts
 # Data tooling (root uv project)
 .env
 data/
+
+/.quarto/
+**/*.quarto_ipynb

@@ -1,0 +1,164 @@
+/*-- scss:defaults --*/
+
+// Mistral-inspired palette: warm red/orange/yellow on near-black,
+// deliberately contrasting the cool blue/purple most AI decks default to.
+$mistral-black: #16110d;
+$mistral-panel: #1f1712;
+$mistral-red: #e10500;
+$mistral-orange: #fa500f;
+$mistral-yellow: #ffd800;
+$mistral-cream: #fdf6ec;
+
+$body-bg: $mistral-black;
+$body-color: $mistral-cream;
+$presentation-heading-color: $mistral-cream;
+$presentation-heading-font-weight: 700;
+
+$link-color: $mistral-orange;
+$link-color-hover: $mistral-yellow;
+
+$selection-bg: $mistral-orange;
+
+$code-block-bg: $mistral-panel;
+
+/*-- scss:rules --*/
+
+.reveal {
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  h1, h2, h3 {
+    background: linear-gradient(90deg, $mistral-orange, $mistral-yellow);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+
+  .title-slide h1,
+  h1.title {
+    background: linear-gradient(90deg, $mistral-red, $mistral-orange, $mistral-yellow);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  strong, b {
+    color: $mistral-yellow;
+  }
+
+  blockquote {
+    border-left: 4px solid $mistral-orange;
+    background: rgba($mistral-orange, 0.08);
+    color: $mistral-cream;
+  }
+
+  .slide-number {
+    color: rgba($mistral-cream, 0.4);
+  }
+
+  table {
+    border-color: rgba($mistral-orange, 0.35);
+
+    th {
+      color: $mistral-yellow;
+      border-bottom: 2px solid $mistral-orange;
+    }
+
+    td {
+      border-bottom: 1px solid rgba($mistral-cream, 0.15);
+    }
+  }
+
+  .panel-tabset [role="tab"][aria-selected="true"] {
+    border-color: $mistral-orange;
+    color: $mistral-yellow;
+  }
+
+  code {
+    color: $mistral-yellow;
+  }
+
+  .mermaid-js svg,
+  .mermaid svg {
+    background: transparent;
+  }
+
+  .callout {
+    border-left: 4px solid $mistral-orange;
+  }
+
+  // Two/three-column layout helper used throughout the deck
+  .columns {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+
+    .column {
+      flex: 1;
+    }
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 999px;
+    background: rgba($mistral-orange, 0.15);
+    border: 1px solid $mistral-orange;
+    color: $mistral-yellow;
+    font-size: 0.6em;
+    letter-spacing: 0.03em;
+  }
+
+  .roadmap-lead {
+    border: 2px solid $mistral-orange;
+    border-radius: 12px;
+    padding: 0.75em 1.2em;
+    background: rgba($mistral-orange, 0.1);
+  }
+
+  footer,
+  .footer {
+    color: rgba($mistral-cream, 0.5);
+  }
+
+  // Legible captions over full-bleed photo backgrounds. Overrides the
+  // gradient-text-clip rule above with a solid color, since clipping a
+  // solid box background to text renders the heading invisible.
+  section[data-background-image] h1,
+  section[data-background-image] h2 {
+    display: inline-block;
+    background: rgba($mistral-black, 0.6);
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: $mistral-cream;
+    padding: 0.25em 0.6em;
+    border-radius: 10px;
+  }
+
+  section[data-background-image] p {
+    display: inline-block;
+    background: rgba($mistral-black, 0.55);
+    padding: 0.3em 0.8em;
+    border-radius: 10px;
+    font-size: 1.1em;
+    color: $mistral-cream;
+  }
+
+  // Section divider slides (level-1 headings, slide-level: 2)
+  .reveal .slides > section > section.stack,
+  .reveal .slides section .title-slide,
+  .reveal .slides > section:not([data-background-image]) h1 {
+    font-size: 2.6em;
+  }
+
+  .kicker {
+    display: block;
+    font-size: 0.4em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $mistral-yellow;
+    -webkit-text-fill-color: $mistral-yellow;
+    margin-bottom: 0.3em;
+  }
+}

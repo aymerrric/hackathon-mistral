@@ -1,0 +1,58 @@
+[
+  {
+    "objectID": "index.html#the-situation",
+    "href": "index.html#the-situation",
+    "title": "CallTree",
+    "section": "The situation",
+    "text": "The situation\nSame policy. Told once. Checked never.\n\nProcedure-driven calls — dispatch protocols, support playbooks, KYC scripts — need to be followed consistently. Today that breaks down on both ends: live, agents forget steps under pressure, especially edge cases. After the fact, nobody has time to listen back and check every call against policy. Onboarding a new agent to a written policy PDF is slow and inconsistent from person to person."
+  },
+  {
+    "objectID": "index.html#guide-follow-the-script-live",
+    "href": "index.html#guide-follow-the-script-live",
+    "title": "CallTree",
+    "section": "Guide — follow the script, live",
+    "text": "Guide — follow the script, live\n\nUse case 1 — the human on the call\n\nOne question at a time. Nothing to memorize.\n\nThis is the first and primary use case: a live, big-button UI that walks an agent through the decision tree during the call itself, one question at a time. The agent actively works through the script as the conversation happens instead of hunting through a policy PDF. This is the demo centerpiece — upload a spec, Mistral (mistral-large-latest) turns it into the tree, and the agent is guided node by node, live, on the next call they take."
+  },
+  {
+    "objectID": "index.html#audit-check-the-call-after-the-fact",
+    "href": "index.html#audit-check-the-call-after-the-fact",
+    "title": "CallTree",
+    "section": "Audit — check the call after the fact",
+    "text": "Audit — check the call after the fact\n\nUse case 2 — checking how agents did\n\nSame tree. Now it grades the call.\n\nThe second use case closes the loop: upload a recording of a past call, Voxtral transcribes it, and Mistral judges the transcript against the same tree the agent was guided by — which steps were followed, skipped, or deviated from, with supporting quotes, and a 0–100 adherence score. Same ground truth as Guide, so what agents are told to do and what they’re graded on can never drift apart.\nDemo data: no real recordings for a hackathon, so we synthesize calls from MultiWOZ 2.2 dialogues already vendored in test-data/sample_dialogues.json, restyled as support-call scripts — e.g. a restaurant-booking dialogue becomes greet → gather cuisine/area → gather party size & time → confirm booking. We generate one call that follows the tree cleanly and one that deliberately skips a step, so the scoring UI has something to catch live."
+  },
+  {
+    "objectID": "index.html#architecture",
+    "href": "index.html#architecture",
+    "title": "CallTree",
+    "section": "Architecture",
+    "text": "Architecture\n\n\n\n\n\nflowchart LR\n  subgraph Frontend [Next.js :3000]\n    UI[Pages & components]\n  end\n  subgraph Backend [FastAPI :8000]\n    API[REST routers]\n    TG[tree_generator]\n    TR[transcription]\n    CA[call_analysis]\n  end\n  DB[(PostgreSQL :5432)]\n  M[Mistral API&lt;br/&gt;chat + Voxtral]\n\n  UI -- \"fetch (lib/api.ts)\" --&gt; API\n  API --&gt; DB\n  API --&gt; TG & TR & CA\n  TG & CA -- chat completions --&gt; M\n  TR -- audio transcription --&gt; M\n\n\n\n\n\n\n\nNext.js frontend talks only through a typed client (lib/api.ts) to FastAPI. Three Mistral-backed services: tree_generator, transcription, call_analysis. Trees are stored as a single JSONB document in Postgres, always read and written whole — no normalized nodes table needed at this scale. Audio files land on local disk (backend/media/), not in the DB."
+  },
+  {
+    "objectID": "index.html#the-tree-contract",
+    "href": "index.html#the-tree-contract",
+    "title": "CallTree",
+    "section": "The tree contract",
+    "text": "The tree contract\n\n\n\n\n\ngraph TD\n  n1{\"n1 · Emergency?\"} --&gt;|Yes| n2[\"n2 · end&lt;br/&gt;'Units are on the way.&lt;br/&gt;Stay on the line.'\"]\n  n1 --&gt;|No| n3[\"n3 · question&lt;br/&gt;Next step…\"]\n\n\n\n\n\n\n\nTreeStructure = root_id + a nodes map — the one shape the generator, the guide UI, and the judge all share. question nodes have two or more options, action nodes exactly one (“Continue”), end nodes none. Every next_id must resolve, every path must reach an end. Trees are immutable per version — edits insert version = max + 1, so sessions and past calls keep pointing at the version they started with; history never quietly changes underneath them."
+  },
+  {
+    "objectID": "index.html#powered-by-mistral",
+    "href": "index.html#powered-by-mistral",
+    "title": "CallTree",
+    "section": "Powered by Mistral",
+    "text": "Powered by Mistral\n\n\n\n\nTask\nModel\n\n\n\n\nTree generation\nmistral-large-latest\n\n\nCall judging\nmistral-large-latest\n\n\nTranscription\nvoxtral-mini-latest\n\n\n\n\nTree generation and call judging both use mistral-large-latest in JSON mode, validated with Pydantic, one retry on bad JSON before failing. Transcription uses voxtral-mini-latest to turn a call recording into a timestamped, speaker-labeled transcript."
+  },
+  {
+    "objectID": "index.html#whats-next",
+    "href": "index.html#whats-next",
+    "title": "CallTree",
+    "section": "What’s next",
+    "text": "What’s next\n🔊 Text-to-speech: hear the next line, don’t just read it\n\nNext extension phase: read the agent’s next scripted line out loud, hands-free, during a live call — closing the Guide loop with voice instead of eyes glued to a screen. No TTS exists in the codebase today — Voxtral only does speech-to-text — so this is a genuinely new direction, not a tweak of something already built.\nAlso on the roadmap: real-time in-call judging (flag a deviation while the call is still happening, not after), and multi-language tree generation and judging."
+  },
+  {
+    "objectID": "index.html#thank-you",
+    "href": "index.html#thank-you",
+    "title": "CallTree",
+    "section": "Thank you",
+    "text": "Thank you\nQuestions?\n\n\nCallTree — upload the procedure once, then let Mistral both guide the call live and grade it after the fact. Fun fact: Mistral’s own logo hides a cat — early ML’s favorite training subject, and ours too."
+  }
+]
