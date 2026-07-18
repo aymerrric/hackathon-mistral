@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { createSession, finishSession, getTree, takeStep } from "@/lib/api";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createSession, finishSession, getTree, listTrees, takeStep } from "@/lib/api";
 import type { GuidanceSession, Tree } from "@/lib/types";
 import GuidePanel from "@/components/GuidePanel";
 import AssistBar from "@/components/AssistBar";
@@ -18,14 +19,33 @@ function fmtDuration(ms: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export default function GuidePage({ params }: { params: { treeId: string } }) {
+export default function GuidePage(props: { params: { treeId: string } }) {
+  // useSearchParams needs a Suspense boundary in the app router.
+  return (
+    <Suspense fallback={null}>
+      <GuidePageInner {...props} />
+    </Suspense>
+  );
+}
+
+function GuidePageInner({ params }: { params: { treeId: string } }) {
+  const router = useRouter();
+  const search = useSearchParams();
+  // ?stay=1 — the user explicitly chose this version; don't redirect away.
+  const stay = search.get("stay") === "1";
+  // ?switched=<v>&from=<id> — we landed here via the auto-redirect.
+  const switchedFrom = search.get("switched");
+  const switchedFromId = search.get("from");
   const [tree, setTree] = useState<Tree | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [operator, setOperator] = useState("");
   const [session, setSession] = useState<GuidanceSession | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editingName, setEditingName] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [mainTree, setMainTree] = useState<Tree | null>(null);
+  const [mainChecked, setMainChecked] = useState(false);
 
   useEffect(() => {
     getTree(params.treeId)
@@ -33,6 +53,34 @@ export default function GuidePage({ params }: { params: { treeId: string } }) {
       .catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
     setOperator(localStorage.getItem("calltree:operator") ?? "");
   }, [params.treeId]);
+
+  // Guiding happens on the employees' version by default: landing on any
+  // other version redirects there, unless the user opted out with ?stay=1
+  // (the redirect notice offers the way back).
+  useEffect(() => {
+    if (!tree || tree.is_main) {
+      setMainTree(null);
+      setMainChecked(true);
+      return;
+    }
+    setMainChecked(false);
+    listTrees()
+      .then((all) => {
+        const main =
+          all.find((t) => t.spec_id === tree.spec_id && t.is_main) ?? null;
+        setMainTree(main);
+        setMainChecked(true);
+        if (main && !stay) {
+          router.replace(
+            `/trees/${main.id}/guide?switched=${tree.version}&from=${tree.id}`
+          );
+        }
+      })
+      .catch(() => {
+        setMainTree(null);
+        setMainChecked(true);
+      });
+  }, [tree, stay, router]);
 
   useEffect(() => {
     if (session?.status !== "active") return;
@@ -96,6 +144,7 @@ export default function GuidePage({ params }: { params: { treeId: string } }) {
     try {
       localStorage.setItem("calltree:operator", operator.trim());
       setSession(await createSession(tree.id, operator.trim()));
+      setEditingName(false);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -117,11 +166,62 @@ export default function GuidePage({ params }: { params: { treeId: string } }) {
       </div>
     );
   }
+  // Not the employees' version and no opt-out: the redirect effect is about
+  // to fire (or the main lookup is still running) — don't flash this version.
+  if (!tree.is_main && !stay && (!mainChecked || mainTree)) {
+    return (
+      <div className="page-loading">
+        <span className="spinner" /> Switching to the employees&apos; version
+      </div>
+    );
+  }
 
-  // --- Pre-call: operator name, start ---------------------------------
+  // --- Pre-call: one keystroke to start ---------------------------------
+  // The last operator name is remembered; the name form only appears the
+  // first time (or via "change"), so a new call is a single Enter press.
+  const versionNotice = !tree.is_main ? (
+    // The user chose to stay on a non-employees version (?stay=1).
+    <div className="version-notice">
+      <span>
+        Guiding on v{tree.version} — not the version employees use
+        {mainTree ? ` (v${mainTree.version})` : ""}.
+      </span>
+      {mainTree && (
+        <a
+          href={`/trees/${mainTree.id}/guide`}
+          style={{ color: "inherit", fontWeight: 600 }}
+        >
+          Back to v{mainTree.version}
+        </a>
+      )}
+    </div>
+  ) : switchedFrom && switchedFromId ? (
+    // Landed here via the auto-redirect: leave a way back.
+    <div className="version-notice info">
+      <span>
+        Switched to v{tree.version}, the version employees use.
+      </span>
+      <a
+        href={`/trees/${switchedFromId}/guide?stay=1`}
+        style={{ color: "inherit", fontWeight: 600 }}
+      >
+        Use v{switchedFrom} instead
+      </a>
+      <button
+        className="notice-dismiss"
+        aria-label="Dismiss"
+        onClick={() => router.replace(`/trees/${tree.id}/guide`)}
+      >
+        ×
+      </button>
+    </div>
+  ) : null;
+
   if (!session) {
+    const knownOperator = operator.trim().length > 0 && !editingName;
     return (
       <div className="container-narrow" style={{ paddingTop: 56 }}>
+        {versionNotice}
         <div className="eyebrow">
           {tree.title} · v{tree.version}
         </div>
@@ -129,26 +229,55 @@ export default function GuidePage({ params }: { params: { treeId: string } }) {
           New call
         </h1>
         <div className="card" style={{ maxWidth: 460 }}>
-          <label className="label" htmlFor="operator">
-            Operator
-          </label>
-          <input
-            id="operator"
-            className="input"
-            placeholder="Your name"
-            value={operator}
-            autoFocus
-            onChange={(e) => setOperator(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && start()}
-          />
-          <button
-            className="btn btn-primary btn-lg"
-            style={{ marginTop: 14, width: "100%" }}
-            disabled={!operator.trim() || busy}
-            onClick={start}
-          >
-            Start call
-          </button>
+          {knownOperator ? (
+            <>
+              <button
+                className="btn btn-primary btn-lg"
+                style={{ width: "100%" }}
+                autoFocus
+                disabled={busy}
+                onClick={start}
+              >
+                {busy ? "Starting" : "Start call"}
+              </button>
+              <p
+                className="muted"
+                style={{ margin: "12px 0 0", fontSize: 13, textAlign: "center" }}
+              >
+                Operator: {operator.trim()} ·{" "}
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: "0 4px", fontSize: 13 }}
+                  onClick={() => setEditingName(true)}
+                >
+                  change
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
+              <label className="label" htmlFor="operator">
+                Operator
+              </label>
+              <input
+                id="operator"
+                className="input"
+                placeholder="Your name"
+                value={operator}
+                autoFocus
+                onChange={(e) => setOperator(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && start()}
+              />
+              <button
+                className="btn btn-primary btn-lg"
+                style={{ marginTop: 14, width: "100%" }}
+                disabled={!operator.trim() || busy}
+                onClick={start}
+              >
+                {busy ? "Starting" : "Start call"}
+              </button>
+            </>
+          )}
           {actionError && (
             <p className="error-text" style={{ marginTop: 10, marginBottom: 0 }}>
               {actionError}
@@ -211,10 +340,17 @@ export default function GuidePage({ params }: { params: { treeId: string } }) {
         <button
           className="btn btn-primary btn-lg"
           style={{ marginTop: 18 }}
-          onClick={() => setSession(null)}
+          autoFocus
+          disabled={busy}
+          onClick={start}
         >
-          New call
+          {busy ? "Starting" : `New call as ${session.agent_name}`}
         </button>
+        {actionError && (
+          <p className="error-text" style={{ marginTop: 10 }}>
+            {actionError}
+          </p>
+        )}
       </div>
     );
   }

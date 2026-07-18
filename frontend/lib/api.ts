@@ -72,6 +72,17 @@ export async function updateTree(
   return req<Tree>(`/api/trees/${treeId}`, json("PUT", { title, structure }));
 }
 
+/** POST /api/trees/{id}/select — make this version the employees' version. */
+export async function selectTree(treeId: string): Promise<Tree> {
+  return req<Tree>(`/api/trees/${treeId}/select`, { method: "POST" });
+}
+
+/** DELETE /api/trees/{id} — 409 if it is the only version of its spec. */
+export async function deleteTree(treeId: string): Promise<void> {
+  const res = await fetch(`${API}/api/trees/${treeId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+}
+
 // --- Guidance sessions -----------------------------------------------------
 
 /** POST /api/sessions */
@@ -83,6 +94,11 @@ export async function createSession(
     "/api/sessions",
     json("POST", { tree_id: treeId, agent_name: agentName })
   );
+}
+
+/** GET /api/sessions — all sessions, newest first. */
+export async function listSessions(): Promise<GuidanceSession[]> {
+  return req<GuidanceSession[]>("/api/sessions");
 }
 
 /** POST /api/sessions/{id}/step */

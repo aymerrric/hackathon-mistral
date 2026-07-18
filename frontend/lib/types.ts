@@ -39,6 +39,8 @@ export interface Tree {
   title: string;
   version: number;
   structure: TreeStructure;
+  /** True on the one version per spec that employees are guided with. */
+  is_main: boolean;
   created_at: string;
 }
 

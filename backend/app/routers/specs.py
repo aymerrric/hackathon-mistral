@@ -138,12 +138,18 @@ def generate_tree(spec_id: uuid.UUID, db: Session = Depends(get_db)) -> TreeOut:
     max_version = result.scalar() or 0
     new_version = max_version + 1
     
-    # Create tree
+    # Create tree. The first version of a spec (or a regeneration when no
+    # main version exists) becomes the employees' version automatically;
+    # after that, selection is explicit via POST /api/trees/{id}/select.
+    has_main = db.execute(
+        select(Tree.id).where(Tree.spec_id == spec_id, Tree.is_main).limit(1)
+    ).scalar() is not None
     tree = Tree(
         spec_id=spec_id,
         title=spec.name,
         version=new_version,
-        structure=tree_structure.model_dump()
+        structure=tree_structure.model_dump(),
+        is_main=not has_main,
     )
     db.add(tree)
     db.commit()

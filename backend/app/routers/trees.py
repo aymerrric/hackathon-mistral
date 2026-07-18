@@ -6,7 +6,7 @@ Fully implemented.
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -92,15 +92,73 @@ def update_tree(tree_id: uuid.UUID, body: TreeUpdate, db: Session = Depends(get_
     max_version = result.scalar() or 0
     new_version = max_version + 1
     
-    # Create new tree version
+    # Create new tree version. It does NOT become the employees' version
+    # automatically — selection stays explicit (POST /{id}/select) — unless
+    # the spec has no main version at all yet.
+    has_main = db.execute(
+        select(Tree.id)
+        .where(Tree.spec_id == existing_tree.spec_id, Tree.is_main)
+        .limit(1)
+    ).scalar() is not None
     new_tree = Tree(
         spec_id=existing_tree.spec_id,
         title=body.title or existing_tree.title,
         version=new_version,
-        structure=validated.model_dump()
+        structure=validated.model_dump(),
+        is_main=not has_main,
     )
     db.add(new_tree)
     db.commit()
     db.refresh(new_tree)
-    
+
     return new_tree
+
+
+@router.post("/{tree_id}/select", response_model=TreeOut)
+def select_tree(tree_id: uuid.UUID, db: Session = Depends(get_db)) -> TreeOut:
+    """Mark this version as the one employees are guided with (is_main).
+    Clears the flag on every other version of the same spec. 404 if not
+    found."""
+    tree = db.get(Tree, tree_id)
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    db.execute(
+        update(Tree)
+        .where(Tree.spec_id == tree.spec_id, Tree.id != tree.id)
+        .values(is_main=False)
+    )
+    tree.is_main = True
+    db.commit()
+    db.refresh(tree)
+    return tree
+
+
+@router.delete("/{tree_id}", status_code=204)
+def delete_tree(tree_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    """Delete one tree version. Sessions and calls that reference it are
+    removed too (ON DELETE CASCADE).
+
+    409 if it is the only version of its spec — delete the spec instead.
+    If the deleted version was the employees' version, the highest
+    remaining version of the spec is promoted."""
+    tree = db.get(Tree, tree_id)
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+
+    siblings = db.execute(
+        select(Tree)
+        .where(Tree.spec_id == tree.spec_id, Tree.id != tree.id)
+        .order_by(Tree.version.desc())
+    ).scalars().all()
+    if not siblings:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete the only version of this tree",
+        )
+
+    was_main = tree.is_main
+    db.delete(tree)
+    db.flush()
+    if was_main:
+        siblings[0].is_main = True
+    db.commit()

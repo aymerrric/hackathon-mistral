@@ -19,7 +19,13 @@ export default function TopBar() {
 
   const match = pathname.match(/^\/trees\/([^/]+)/);
   const treeId = match?.[1] ?? null;
-  const inGuide = pathname.endsWith("/guide");
+  const mode = pathname.endsWith("/guide")
+    ? "guide"
+    : pathname.endsWith("/log")
+      ? "log"
+      : pathname.endsWith("/audit")
+        ? "audit"
+        : "tree";
 
   useEffect(() => {
     listTrees()
@@ -47,13 +53,19 @@ export default function TopBar() {
     };
   }, [open]);
 
-  // Latest version per spec, newest spec first.
-  const latest = new Map<string, Tree>();
+  // One entry per spec: the version employees use (is_main), falling back
+  // to the latest version if none is flagged. Newest spec first.
+  const bySpec = new Map<string, Tree>();
   for (const t of trees) {
-    const cur = latest.get(t.spec_id);
-    if (!cur || t.version > cur.version) latest.set(t.spec_id, t);
+    const cur = bySpec.get(t.spec_id);
+    if (
+      !cur ||
+      (t.is_main && !cur.is_main) ||
+      (t.is_main === cur.is_main && t.version > cur.version)
+    )
+      bySpec.set(t.spec_id, t);
   }
-  const entries = [...latest.values()].sort((a, b) =>
+  const entries = [...bySpec.values()].sort((a, b) =>
     b.created_at.localeCompare(a.created_at)
   );
 
@@ -62,9 +74,10 @@ export default function TopBar() {
   const switchTo = useCallback(
     (id: string) => {
       setOpen(false);
-      router.push(`/trees/${id}${inGuide ? "/guide" : ""}`);
+      const suffix = mode === "tree" ? "" : `/${mode}`;
+      router.push(`/trees/${id}${suffix}`);
     },
-    [router, inGuide]
+    [router, mode]
   );
 
   return (
@@ -127,16 +140,28 @@ export default function TopBar() {
       {treeId && (
         <nav className="mode-tabs" aria-label="Mode">
           <button
-            className={`tab ${inGuide ? "active" : ""}`}
+            className={`tab ${mode === "guide" ? "active" : ""}`}
             onClick={() => router.push(`/trees/${treeId}/guide`)}
           >
             Guide
           </button>
           <button
-            className={`tab ${!inGuide ? "active" : ""}`}
+            className={`tab ${mode === "tree" ? "active" : ""}`}
             onClick={() => router.push(`/trees/${treeId}`)}
           >
             Tree
+          </button>
+          <button
+            className={`tab ${mode === "audit" ? "active" : ""}`}
+            onClick={() => router.push(`/trees/${treeId}/audit`)}
+          >
+            Audit
+          </button>
+          <button
+            className={`tab ${mode === "log" ? "active" : ""}`}
+            onClick={() => router.push(`/trees/${treeId}/log`)}
+          >
+            Log
           </button>
         </nav>
       )}

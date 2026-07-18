@@ -18,16 +18,20 @@ CREATE TABLE specs (
 );
 
 -- A generated (and possibly hand-edited) decision tree for a spec.
--- Several versions per spec are allowed; the highest version is the active one.
+-- Several versions per spec are allowed; is_main marks the one version
+-- employees are guided with (at most one per spec, see index below).
 CREATE TABLE trees (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     spec_id       UUID NOT NULL REFERENCES specs(id) ON DELETE CASCADE,
     title         TEXT NOT NULL,
     version       INTEGER NOT NULL DEFAULT 1,
     structure     JSONB NOT NULL,           -- Tree JSON contract (root_id + nodes map)
+    is_main       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (spec_id, version)
 );
+
+CREATE UNIQUE INDEX trees_one_main_per_spec ON trees (spec_id) WHERE is_main;
 
 -- A live guided session: an employee being walked through a tree during a call.
 CREATE TABLE guidance_sessions (

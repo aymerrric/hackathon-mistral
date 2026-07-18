@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getTree, updateTree } from "@/lib/api";
+import { deleteTree, getTree, listTrees, selectTree, updateTree } from "@/lib/api";
 import type { NodeType, Tree, TreeStructure } from "@/lib/types";
 import TreeViewer from "@/components/TreeViewer";
 
@@ -80,8 +80,17 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [versions, setVersions] = useState<Tree[]>([]);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [versionError, setVersionError] = useState<string | null>(null);
+  const [versionBusy, setVersionBusy] = useState(false);
+  const verMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setVersionsOpen(false);
+    setConfirmDelete(false);
+    setVersionError(null);
     getTree(params.treeId)
       .then((t) => {
         setTree(t);
@@ -91,6 +100,29 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
   }, [params.treeId]);
+
+  // All versions of this spec, newest first, for the version switcher.
+  useEffect(() => {
+    if (!tree) return;
+    listTrees()
+      .then((all) =>
+        setVersions(
+          all
+            .filter((t) => t.spec_id === tree.spec_id)
+            .sort((a, b) => b.version - a.version)
+        )
+      )
+      .catch(() => setVersions([]));
+  }, [tree]);
+
+  useEffect(() => {
+    if (!versionsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!verMenuRef.current?.contains(e.target as Node)) setVersionsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [versionsOpen]);
 
   const dirty = useMemo(() => {
     if (!tree || !draft) return false;
@@ -109,6 +141,39 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
       fn(next);
       return next;
     });
+  }
+
+  async function makeMain() {
+    if (!tree || tree.is_main) return;
+    setVersionBusy(true);
+    setVersionError(null);
+    try {
+      const updated = await selectTree(tree.id);
+      setTree(updated);
+      setVersions((vs) => vs.map((v) => ({ ...v, is_main: v.id === updated.id })));
+    } catch (e) {
+      setVersionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setVersionBusy(false);
+    }
+  }
+
+  async function removeVersion() {
+    if (!tree) return;
+    setVersionBusy(true);
+    setVersionError(null);
+    try {
+      await deleteTree(tree.id);
+      const rest = versions.filter((v) => v.id !== tree.id);
+      // If the deleted version was the employees' one, the backend promotes
+      // the highest remaining version — mirror that choice here.
+      const target = rest.find((v) => v.is_main) ?? rest[0];
+      router.push(target ? `/trees/${target.id}` : "/");
+    } catch (e) {
+      setVersionError(e instanceof Error ? e.message : String(e));
+      setVersionBusy(false);
+      setConfirmDelete(false);
+    }
   }
 
   async function save() {
@@ -158,8 +223,71 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
           aria-label="Tree title"
           size={Math.max(title.length, 10)}
         />
-        <span className="version-pill">v{tree.version}</span>
+        <div className="switcher" ref={verMenuRef}>
+          <button
+            className="switcher-btn"
+            style={{ padding: "3px 8px" }}
+            onClick={() => setVersionsOpen((o) => !o)}
+            aria-expanded={versionsOpen}
+          >
+            <span className="version-pill">v{tree.version}</span>
+            <span className="chev">▾</span>
+          </button>
+          {versionsOpen && (
+            <div className="switcher-menu">
+              <div className="menu-head">Versions</div>
+              {versions.map((v) => (
+                <button
+                  key={v.id}
+                  className="menu-item"
+                  onClick={() => {
+                    setVersionsOpen(false);
+                    if (v.id !== tree.id) router.push(`/trees/${v.id}`);
+                  }}
+                >
+                  <span className="grow">
+                    v{v.version}
+                    <span className="faint" style={{ marginLeft: 8, fontSize: 12 }}>
+                      {new Date(v.created_at).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </span>
+                  {v.is_main && <span className="live-pill">employees</span>}
+                  {v.id === tree.id && <span className="check">●</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {tree.is_main ? (
+          <span className="live-pill">● live for employees</span>
+        ) : (
+          <button className="btn" disabled={versionBusy} onClick={makeMain}>
+            Use for employees
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        <button
+          className={`btn ${confirmDelete ? "btn-danger" : "btn-danger-ghost"}`}
+          disabled={versions.length < 2 || versionBusy}
+          title={
+            versions.length < 2
+              ? "The only version cannot be deleted"
+              : "Delete this version (sessions and calls recorded against it are removed too)"
+          }
+          onClick={() => (confirmDelete ? removeVersion() : setConfirmDelete(true))}
+          onBlur={() => setConfirmDelete(false)}
+        >
+          {confirmDelete ? "Confirm delete" : "Delete version"}
+        </button>
       </div>
+      {versionError && (
+        <p className="error-text" style={{ margin: "6px 0 0" }}>
+          {versionError}
+        </p>
+      )}
       <div className="stat-strip">
         <span className="stat-chip">
           <span className="tv-badge question" /> {counts.question} questions
@@ -192,13 +320,11 @@ export default function TreePage({ params }: { params: { treeId: string } }) {
       </div>
 
       <div className="browse-grid">
-        <div className="outline">
-          <TreeViewer
-            structure={draft}
-            selectedId={selected ?? undefined}
-            onNodeClick={setSelected}
-          />
-        </div>
+        <TreeViewer
+          structure={draft}
+          selectedId={selected ?? undefined}
+          onNodeClick={setSelected}
+        />
 
         <aside className="detail">
           {!node ? (

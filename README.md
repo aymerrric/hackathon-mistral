@@ -60,13 +60,13 @@ flowchart LR
 │       ├── database.py       # SQLAlchemy session (done)
 │       ├── models.py         # ORM models (done)
 │       ├── schemas.py        # API contract (done)
-│       ├── routers/          # specs, trees, sessions, calls — TO IMPLEMENT
-│       └── services/         # tree_generator, transcription, call_analysis — TO IMPLEMENT
+│       ├── routers/          # specs, trees, sessions, calls (done)
+│       └── services/         # tree_generator, transcription, call_analysis (done)
 ├── frontend/
 │   ├── lib/types.ts          # TS mirror of schemas.py (done)
 │   ├── lib/api.ts            # typed fetch client (done)
-│   ├── app/                  # pages (done, except audit — TO IMPLEMENT)
-│   └── components/           # done, except AudioUploader + CallReport — TO IMPLEMENT
+│   ├── app/                  # pages (done)
+│   └── components/           # done
 ├── notebooks/scripts/        # data-download scripts (uv-managed, see pyproject.toml)
 ├── test-data/                # small git-tracked sample of MultiWOZ 2.2 for reference
 └── .agents/                  # agent skills, e.g. access-multiwoz-data
@@ -120,6 +120,7 @@ reach an `end` node.
 | GET | `/api/trees` · `/api/trees/{id}` | List / get trees |
 | PUT | `/api/trees/{id}` | Save manual edits as a new version |
 | POST | `/api/sessions` | Start a guided session |
+| GET | `/api/sessions` | List all sessions (call log) |
 | GET | `/api/sessions/{id}` | Get session + current node |
 | POST | `/api/sessions/{id}/step` | Record a choice, advance |
 | POST | `/api/sessions/{id}/finish` | Complete/abandon the session |
@@ -198,8 +199,10 @@ Open http://localhost:3000.
    procedure questions via `/api/assist`.
 3. **Tree** mode → browse the full tree, click a node to edit wording or
    branches → "Save as v2" (new version, old sessions keep the old one).
-4. Audit (still to build) → upload an mp3/wav of a (staged) call →
-   transcript → "Analyze" → score, per-step verdicts with quotes.
+4. **Audit** → upload an mp3/wav/m4a of a (staged) call → Voxtral
+   transcribes and diarizes it (speakers labeled agent/caller via one chat
+   call) → "Analyze call" → score, per-step verdicts with quotes, matched
+   path highlighted on the tree.
 
 Tip: record your own 2-minute fake call following (and deliberately breaking)
 the tree — a call with one obvious deviation makes the best demo.

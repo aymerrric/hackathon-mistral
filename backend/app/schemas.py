@@ -68,6 +68,8 @@ class TreeOut(BaseModel):
     title: str
     version: int
     structure: TreeStructure
+    # True on the one version per spec that employees are guided with.
+    is_main: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
